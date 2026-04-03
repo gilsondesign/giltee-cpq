@@ -3,8 +3,12 @@ const path = require('path')
 
 // Strip YAML frontmatter (--- ... ---\n) before using as Claude system prompts
 function loadSkill(filename) {
-  const content = fs.readFileSync(path.join(__dirname, filename), 'utf-8')
-  return content.replace(/^---[\s\S]*?---\n/, '')
+  try {
+    const content = fs.readFileSync(path.join(__dirname, filename), 'utf-8')
+    return content.replace(/^---[\s\S]*?---\n?/, '')
+  } catch (err) {
+    throw new Error(`Failed to load skill "${filename}": ${err.message}`)
+  }
 }
 
 module.exports = {

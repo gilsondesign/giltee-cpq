@@ -11,6 +11,9 @@ describe('skills loader', () => {
     expect(typeof skills.EMAIL_DRAFTING).toBe('string')
     expect(skills.INTAKE.length).toBeGreaterThan(100)
     expect(skills.QA.length).toBeGreaterThan(100)
+    expect(skills.GARMENT.length).toBeGreaterThan(100)
+    expect(skills.PRICING_RULES.length).toBeGreaterThan(100)
+    expect(skills.EMAIL_DRAFTING.length).toBeGreaterThan(100)
   })
 
   it('strips YAML frontmatter from skill content', () => {
