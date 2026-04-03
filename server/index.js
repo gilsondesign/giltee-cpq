@@ -128,7 +128,7 @@ app.use('/api', requireAuth)
 
 // Plan B routes:
 app.use('/api/quotes', require('./routes/quotes'))
-// app.use('/api/garments', require('./routes/garments'))
+app.use('/api/garments', require('./routes/garments'))
 // app.use('/api/gmail', require('./routes/gmail'))
 
 // Serve production client
