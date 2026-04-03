@@ -1,7 +1,6 @@
 import { Routes, Route, Navigate, useLocation } from 'react-router-dom'
 
 import { AuthProvider, useAuth } from './context/AuthContext'
-export { useAuth }
 
 import Ledger from './pages/Ledger'
 import CreateQuote from './pages/CreateQuote'

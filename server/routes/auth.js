@@ -76,6 +76,9 @@ router.get('/users', requireAuth, requireAdmin, async (req, res, next) => {
 
 router.patch('/users/:id', requireAuth, requireAdmin, async (req, res, next) => {
   try {
+    if (parseInt(req.params.id) === req.user.id) {
+      return res.status(400).json({ error: 'Cannot change your own account status' })
+    }
     const { status } = req.body
     if (!['active', 'suspended'].includes(status)) {
       return res.status(400).json({ error: 'Status must be active or suspended' })

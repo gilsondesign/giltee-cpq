@@ -1,5 +1,3 @@
-require('dotenv').config()
-
 if (!process.env.DATABASE_URL && process.env.NODE_ENV !== 'test') {
   throw new Error('DATABASE_URL environment variable is required')
 }
