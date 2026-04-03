@@ -76,9 +76,8 @@ async function acceptInvitation(token) {
 // ─── Quotes ───────────────────────────────────────────────────────────────────
 
 async function getNextQuoteId() {
-  const { rows } = await pool.query('SELECT COUNT(*) as count FROM quotes')
-  const next = parseInt(rows[0].count) + 1
-  return `GL-${String(next).padStart(5, '0')}`
+  const { rows } = await pool.query("SELECT nextval('quotes_seq') AS n")
+  return `GL-${String(rows[0].n).padStart(5, '0')}`
 }
 
 async function createQuote(data) {
@@ -117,9 +116,18 @@ async function listQuotes({ status, search } = {}) {
   return rows
 }
 
+const UPDATABLE_QUOTE_COLUMNS = new Set([
+  'status', 'customer_name', 'customer_email', 'project_name',
+  'raw_input', 'intake_record', 'garment_data', 'pricing_osp',
+  'pricing_redwall', 'recommended_supplier', 'qa_report',
+  'email_draft', 'gmail_draft_id', 'pdf_url', 'activity_log'
+])
+
 async function updateQuote(id, fields) {
-  const keys = Object.keys(fields)
-  const values = Object.values(fields)
+  const keys = Object.keys(fields).filter(k => UPDATABLE_QUOTE_COLUMNS.has(k))
+  if (keys.length === 0) throw new Error('No valid fields to update')
+
+  const values = keys.map(k => fields[k])
   const setClause = keys.map((k, i) => `${k} = $${i + 2}`).join(', ')
 
   const { rows } = await pool.query(

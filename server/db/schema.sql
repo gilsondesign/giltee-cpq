@@ -60,3 +60,6 @@ CREATE INDEX IF NOT EXISTS idx_quotes_created_by    ON quotes (created_by);
 CREATE INDEX IF NOT EXISTS idx_quotes_customer_email ON quotes (customer_email);
 CREATE INDEX IF NOT EXISTS idx_quotes_created_at    ON quotes (created_at DESC);
 CREATE INDEX IF NOT EXISTS idx_invitations_email    ON invitations (email);
+
+-- Sequence for quote ID generation (atomic, concurrent-safe, deletion-safe)
+CREATE SEQUENCE IF NOT EXISTS quotes_seq START 1;

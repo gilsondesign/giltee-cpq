@@ -51,6 +51,13 @@ describe('createInvitation', () => {
       expect.stringContaining('INSERT INTO invitations'),
       expect.arrayContaining(['new@example.com', 'abc-123', 1])
     )
+    // Verify the 4th parameter (expires_at) is approximately 7 days from now
+    const callArgs = mockPool.query.mock.calls[0][1]
+    const expiresAt = callArgs[3]
+    const sevenDaysMs = 7 * 24 * 60 * 60 * 1000
+    expect(expiresAt).toBeInstanceOf(Date)
+    expect(expiresAt.getTime()).toBeGreaterThan(Date.now() + sevenDaysMs - 5000)
+    expect(expiresAt.getTime()).toBeLessThan(Date.now() + sevenDaysMs + 5000)
     expect(result).toEqual(fakeInvite)
   })
 })
@@ -80,5 +87,7 @@ describe('listUsers', () => {
     const result = await queries.listUsers()
     expect(result.users).toHaveLength(1)
     expect(result.invitations).toHaveLength(1)
+    expect(result.users[0].role).toBe('admin')
+    expect(result.invitations[0].status).toBe('pending')
   })
 })
