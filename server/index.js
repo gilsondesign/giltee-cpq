@@ -24,6 +24,9 @@ passport.use(new GoogleStrategy({
   callbackURL: `${process.env.APP_URL || 'http://localhost:5173'}/auth/google/callback`
 }, async (accessToken, refreshToken, profile, done) => {
   try {
+    if (!profile.emails?.length) {
+      return done(null, false, { message: 'No verified email on Google profile' })
+    }
     const email = profile.emails[0].value
     const name = profile.displayName
     const avatarUrl = profile.photos[0]?.value
@@ -69,8 +72,9 @@ async function bootstrapAdmin() {
   const adminEmail = process.env.ADMIN_EMAIL
   if (!adminEmail) return
   try {
-    const existing = await queries.getUserByEmail(adminEmail)
-    if (!existing) {
+    // Only bootstrap on a completely empty users table — not just "this email is missing"
+    const { rows } = await pool.query('SELECT COUNT(*) AS count FROM users')
+    if (parseInt(rows[0].count) === 0) {
       await queries.createUser({ email: adminEmail, name: 'Admin', avatarUrl: null, role: 'admin' })
       console.log(`Admin user bootstrapped: ${adminEmail}`)
     }

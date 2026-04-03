@@ -22,8 +22,10 @@ router.get('/google/callback',
 router.post('/logout', (req, res, next) => {
   req.logout((err) => {
     if (err) return next(err)
-    req.session.destroy()
-    res.json({ message: 'Logged out' })
+    req.session.destroy((destroyErr) => {
+      if (destroyErr) return next(destroyErr)
+      res.json({ message: 'Logged out' })
+    })
   })
 })
 
@@ -51,6 +53,9 @@ router.post('/invite', requireAuth, requireAdmin, async (req, res, next) => {
 
     const appUrl = process.env.APP_URL || 'http://localhost:5173'
     const inviteUrl = `${appUrl}/auth/accept?token=${token}`
+    // Note: /auth/accept is handled by the React SPA (client-side router).
+    // The token in the URL is for UI display only — actual access control happens
+    // in the OAuth callback (email matched against pending invitations in the DB).
 
     res.json({ inviteUrl })
   } catch (err) {
