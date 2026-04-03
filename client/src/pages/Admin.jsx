@@ -4,11 +4,14 @@ import NavBar from '../components/NavBar'
 export default function Admin() {
   const [data, setData] = useState({ users: [], invitations: [] })
   const [loading, setLoading] = useState(true)
+  const [fetchError, setFetchError] = useState(null)
   const [inviteEmail, setInviteEmail] = useState('')
   const [inviteLink, setInviteLink] = useState(null)
   const [inviteError, setInviteError] = useState(null)
   const [submitting, setSubmitting] = useState(false)
   const [currentUser, setCurrentUser] = useState(null)
+  const [actionError, setActionError] = useState(null)
+  const [toggling, setToggling] = useState(false)
 
   useEffect(() => {
     Promise.all([
@@ -18,7 +21,10 @@ export default function Admin() {
       setData(userData)
       setCurrentUser(me)
       setLoading(false)
-    }).catch(() => setLoading(false))
+    }).catch((err) => {
+      setFetchError(err.message || 'Failed to load data')
+      setLoading(false)
+    })
   }, [])
 
   async function handleInvite(e) {
@@ -48,14 +54,26 @@ export default function Admin() {
   }
 
   async function handleStatusToggle(userId, currentStatus) {
-    const newStatus = currentStatus === 'active' ? 'suspended' : 'active'
-    await fetch(`/api/auth/users/${userId}`, {
-      method: 'PATCH',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ status: newStatus })
-    })
-    const refreshed = await fetch('/api/auth/users').then(r => r.json())
-    setData(refreshed)
+    setActionError(null)
+    setToggling(true)
+    try {
+      const newStatus = currentStatus === 'active' ? 'suspended' : 'active'
+      const res = await fetch(`/api/auth/users/${userId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ status: newStatus })
+      })
+      if (!res.ok) {
+        const json = await res.json().catch(() => ({}))
+        throw new Error(json.error || 'Failed to update user status')
+      }
+      const refreshed = await fetch('/api/auth/users').then(r => r.json())
+      setData(refreshed)
+    } catch (err) {
+      setActionError(err.message)
+    } finally {
+      setToggling(false)
+    }
   }
 
   if (loading) {
@@ -67,6 +85,8 @@ export default function Admin() {
     )
   }
 
+  const pendingInvitations = data.invitations.filter(i => i.status === 'pending')
+
   return (
     <div className="min-h-screen bg-surface">
       <NavBar user={currentUser} />
@@ -74,9 +94,13 @@ export default function Admin() {
         <h1 className="text-2xl font-bold text-on-surface mb-1">User Management</h1>
         <p className="text-on-surface-variant text-sm mb-8">Invite team members and manage access to Giltee Ledger.</p>
 
+        {fetchError && (
+          <p className="mb-6 text-sm text-error">{fetchError}</p>
+        )}
+
         {/* Invite form */}
         <section className="bg-surface-container-low rounded p-6 mb-8">
-          <p className="text-xs font-bold tracking-widest text-on-surface-variant uppercase mb-4">USER MANAGEMENT</p>
+          <p className="text-xs font-bold tracking-widest text-on-surface-variant uppercase mb-4">INVITE USER</p>
           <form onSubmit={handleInvite} className="flex gap-3">
             <input
               type="email"
@@ -118,6 +142,11 @@ export default function Admin() {
         {/* Active users */}
         <section className="mb-8">
           <p className="text-xs font-bold tracking-widest text-on-surface-variant uppercase mb-3">ACTIVE USERS</p>
+
+          {actionError && (
+            <p className="mb-3 text-sm text-error">{actionError}</p>
+          )}
+
           <div className="bg-surface-container-low rounded overflow-hidden">
             {data.users.map(user => (
               <div key={user.id} className="flex items-center justify-between px-4 py-3 hover:bg-surface-container transition-colors">
@@ -141,7 +170,8 @@ export default function Admin() {
                   {user.id !== currentUser?.id && (
                     <button
                       onClick={() => handleStatusToggle(user.id, user.status)}
-                      className="text-xs text-on-surface-variant hover:text-error transition-colors"
+                      disabled={toggling}
+                      className="text-xs text-on-surface-variant hover:text-error transition-colors disabled:opacity-60"
                     >
                       {user.status === 'active' ? 'Suspend' : 'Reactivate'}
                     </button>
@@ -153,11 +183,11 @@ export default function Admin() {
         </section>
 
         {/* Pending invitations */}
-        {data.invitations.filter(i => i.status === 'pending').length > 0 && (
+        {pendingInvitations.length > 0 && (
           <section>
             <p className="text-xs font-bold tracking-widest text-on-surface-variant uppercase mb-3">PENDING INVITATIONS</p>
             <div className="bg-surface-container-low rounded overflow-hidden">
-              {data.invitations.filter(i => i.status === 'pending').map(invite => (
+              {pendingInvitations.map(invite => (
                 <div key={invite.id} className="flex items-center justify-between px-4 py-3">
                   <p className="text-sm text-on-surface">{invite.email}</p>
                   <p className="text-xs text-on-surface-variant">

@@ -21,7 +21,7 @@ afterEach(() => vi.resetAllMocks())
 describe('Admin page', () => {
   it('renders the page title', async () => {
     render(<BrowserRouter><Admin /></BrowserRouter>)
-    await waitFor(() => expect(screen.getByText('USER MANAGEMENT')).toBeInTheDocument())
+    await waitFor(() => expect(screen.getByText('INVITE USER')).toBeInTheDocument())
   })
 
   it('lists users after loading', async () => {
