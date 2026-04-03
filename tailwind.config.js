@@ -10,8 +10,8 @@ export default {
         'secondary':                 '#006d3c',
         'secondary-fixed':           '#87f9af',
         'surface':                   '#ffffff',
-        'surface-container-low':     '#f8f9fa',
-        'surface-container':         '#f8f9fa',
+        'surface-container-low':     '#f8f9fa', // Intentionally identical per Giltee design spec
+        'surface-container':         '#f8f9fa', // Intentionally identical per Giltee design spec
         'surface-container-highest': '#f1f3f5',
         'surface-container-lowest':  '#ffffff',
         'surface-variant':           '#f1f3f5',
@@ -25,6 +25,7 @@ export default {
       fontFamily: {
         sans: ['Inter', 'sans-serif'],
       },
+      // Giltee design rule: no rounded corners above 6px — lg intentionally capped at 0.375rem
       borderRadius: {
         DEFAULT: '0.375rem',
         sm: '0.25rem',
