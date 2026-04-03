@@ -11,12 +11,11 @@ describe('Login', () => {
   })
 
   it('shows error message when auth_failed param is present', () => {
-    // Mock window.location.search
-    Object.defineProperty(window, 'location', {
-      value: { search: '?error=auth_failed' },
-      writable: true
-    })
-    render(<MemoryRouter><Login /></MemoryRouter>)
+    render(
+      <MemoryRouter initialEntries={['/login?error=auth_failed']}>
+        <Login />
+      </MemoryRouter>
+    )
     expect(screen.getByText(/sign-in failed/i)).toBeInTheDocument()
   })
 })
@@ -31,5 +30,6 @@ describe('AcceptInvite', () => {
   it('shows error when no token is present', () => {
     render(<MemoryRouter initialEntries={['/auth/accept']}><AcceptInvite /></MemoryRouter>)
     expect(screen.getByText(/invalid or missing invite token/i)).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /sign in with google/i })).toBeDisabled()
   })
 })
