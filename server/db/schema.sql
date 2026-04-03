@@ -51,5 +51,12 @@ CREATE TABLE IF NOT EXISTS quotes (
   activity_log         JSONB        NOT NULL DEFAULT '[]',
   created_at           TIMESTAMP    NOT NULL DEFAULT NOW(),
   updated_at           TIMESTAMP    NOT NULL DEFAULT NOW(),
-  created_by           VARCHAR(255)
+  created_by           VARCHAR(255)      -- Stores user email/name (denormalized per PRD — not a FK)
 );
+
+-- Indexes for common query patterns
+CREATE INDEX IF NOT EXISTS idx_quotes_status        ON quotes (status);
+CREATE INDEX IF NOT EXISTS idx_quotes_created_by    ON quotes (created_by);
+CREATE INDEX IF NOT EXISTS idx_quotes_customer_email ON quotes (customer_email);
+CREATE INDEX IF NOT EXISTS idx_quotes_created_at    ON quotes (created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_invitations_email    ON invitations (email);
