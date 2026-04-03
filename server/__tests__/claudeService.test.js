@@ -17,6 +17,8 @@ const claudeService = require('../services/claudeService')
 beforeEach(() => {
   // Reset all mocks but keep the implementation
   jest.clearAllMocks()
+  // Reset the lazy singleton so a fresh Anthropic instance is created each test
+  claudeService._resetClientForTesting()
   Anthropic.mockImplementation(() => ({
     messages: {
       create: jest.fn().mockResolvedValue({

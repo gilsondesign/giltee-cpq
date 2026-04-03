@@ -225,9 +225,9 @@ function calculateQuote(params) {
     case 'SCREEN_PRINT':
       return calculateScreenPrintQuote(params)
     case 'DTF':
-      return { single: calculateDTFQuote(params), recommended: 'REDWALL' }
+      return { single: calculateDTFQuote(params), recommended: 'SINGLE' }
     case 'DTG':
-      return { single: calculateDTGQuote(params), recommended: 'REDWALL' }
+      return { single: calculateDTGQuote(params), recommended: 'SINGLE' }
     case 'EMBROIDERY':
       return {
         single: null,

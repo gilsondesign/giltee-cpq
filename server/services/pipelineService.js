@@ -168,7 +168,7 @@ For status use: APPROVED, NEEDS_FIXES, or BLOCKED`,
     await appendLog(quoteId, 'QA complete', { status: qa_report.status })
 
     // ── Step 5: Email draft ─────────────────────────────────────────────────
-    const recommendedPricing = recommended_supplier === 'OSP' ? pricing_osp : pricing_redwall
+    const recommendedPricing = recommended_supplier === 'REDWALL' ? pricing_redwall : pricing_osp
     const emailText = await claudeService.callClaude({
       systemPrompt: skills.EMAIL_DRAFTING,
       userPrompt: `Draft the customer email for the following quote. Write in Lisa's voice exactly as described.
@@ -205,15 +205,20 @@ SUBJECT: [subject line]
     await appendLog(quoteId, 'PDF uploaded to Drive', { url: driveResult.url })
 
     // ── Step 8: Gmail draft ──────────────────────────────────────────────────
-    const draftId = await gmailService.createDraft({
-      to: intake_record.customer?.email || quote.customer_email,
-      subject: emailSubject,
-      body: emailBody,
-      pdfBuffer,
-      pdfFilename,
-    })
-    await queries.updateQuote(quoteId, { gmail_draft_id: draftId })
-    await appendLog(quoteId, 'Gmail draft created', { draftId })
+    const recipientEmail = intake_record.customer?.email || quote.customer_email
+    if (!recipientEmail) {
+      await appendLog(quoteId, 'Gmail draft skipped — no recipient email')
+    } else {
+      const draftId = await gmailService.createDraft({
+        to: recipientEmail,
+        subject: emailSubject,
+        body: emailBody,
+        pdfBuffer,
+        pdfFilename,
+      })
+      await queries.updateQuote(quoteId, { gmail_draft_id: draftId })
+      await appendLog(quoteId, 'Gmail draft created', { draftId })
+    }
 
     // ── Complete ─────────────────────────────────────────────────────────────
     await queries.updateQuote(quoteId, { status: 'ready' })

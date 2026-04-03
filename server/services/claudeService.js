@@ -1,5 +1,11 @@
 const Anthropic = require('@anthropic-ai/sdk')
 
+let _client = null
+function getClient() {
+  if (!_client) _client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY })
+  return _client
+}
+
 /**
  * Call Claude with a system prompt and user prompt.
  * Returns the text content of the first response message.
@@ -10,7 +16,7 @@ async function callClaude({
   model = 'claude-opus-4-6',
   maxTokens = 4096,
 }) {
-  const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY })
+  const client = getClient()
   const response = await client.messages.create({
     model,
     max_tokens: maxTokens,
@@ -34,4 +40,6 @@ function parseJSONFromText(text) {
   return JSON.parse(text.trim())
 }
 
-module.exports = { callClaude, parseJSONFromText }
+function _resetClientForTesting() { _client = null }
+
+module.exports = { callClaude, parseJSONFromText, _resetClientForTesting }

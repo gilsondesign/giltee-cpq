@@ -49,6 +49,10 @@ router.get('/:id', async (req, res, next) => {
 // PATCH /api/quotes/:id — update quote fields
 router.patch('/:id', async (req, res, next) => {
   try {
+    const VALID_STATUSES = new Set(['draft', 'processing', 'ready', 'error', 'sent'])
+    if (req.body.status !== undefined && !VALID_STATUSES.has(req.body.status)) {
+      return res.status(400).json({ error: `Invalid status. Must be one of: ${[...VALID_STATUSES].join(', ')}` })
+    }
     const quote = await queries.updateQuote(req.params.id, req.body)
     if (!quote) return res.status(404).json({ error: 'Quote not found' })
     res.json(quote)
