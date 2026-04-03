@@ -126,8 +126,8 @@ app.use('/api/auth', require('./routes/auth'))
 // All /api/* routes below this point require authentication
 app.use('/api', requireAuth)
 
-// Plan B routes (uncomment when implemented):
-// app.use('/api/quotes', require('./routes/quotes'))
+// Plan B routes:
+app.use('/api/quotes', require('./routes/quotes'))
 // app.use('/api/garments', require('./routes/garments'))
 // app.use('/api/gmail', require('./routes/gmail'))
 
