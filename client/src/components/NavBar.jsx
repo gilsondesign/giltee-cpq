@@ -1,6 +1,8 @@
 import { NavLink } from 'react-router-dom'
+import { useAuth } from '../context/AuthContext'
 
-export default function NavBar({ user }) {
+export default function NavBar() {
+  const { user } = useAuth()
   return (
     <nav className="bg-surface border-b border-outline-variant/30 px-6 py-0 flex items-center justify-between h-14">
       {/* Left: Wordmark */}

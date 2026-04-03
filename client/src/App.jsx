@@ -1,5 +1,6 @@
 import { Routes, Route, Navigate, useLocation } from 'react-router-dom'
-import { useState, useEffect, createContext, useContext } from 'react'
+
+import { AuthProvider, useAuth } from './context/AuthContext'
 
 import Ledger from './pages/Ledger'
 import CreateQuote from './pages/CreateQuote'
@@ -8,27 +9,6 @@ import Clients from './pages/Clients'
 import Admin from './pages/Admin'
 import Login from './pages/Login'
 import AcceptInvite from './pages/AcceptInvite'
-
-// ─── Auth context ─────────────────────────────────────────────────────────────
-
-const AuthContext = createContext(null)
-
-export function useAuth() {
-  return useContext(AuthContext)
-}
-
-function AuthProvider({ children }) {
-  const [user, setUser] = useState(undefined) // undefined = loading, null = not authed
-
-  useEffect(() => {
-    fetch('/api/auth/me', { credentials: 'include' })
-      .then(r => r.ok ? r.json() : null)
-      .then(data => setUser(data))
-      .catch(() => setUser(null))
-  }, [])
-
-  return <AuthContext.Provider value={{ user, setUser }}>{children}</AuthContext.Provider>
-}
 
 // ─── AuthGuard ────────────────────────────────────────────────────────────────
 

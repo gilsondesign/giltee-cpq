@@ -1,7 +1,9 @@
 import { useState, useEffect } from 'react'
 import NavBar from '../components/NavBar'
+import { useAuth } from '../context/AuthContext'
 
 export default function Admin() {
+  const { user: currentUser } = useAuth()
   const [data, setData] = useState({ users: [], invitations: [] })
   const [loading, setLoading] = useState(true)
   const [fetchError, setFetchError] = useState(null)
@@ -9,22 +11,18 @@ export default function Admin() {
   const [inviteLink, setInviteLink] = useState(null)
   const [inviteError, setInviteError] = useState(null)
   const [submitting, setSubmitting] = useState(false)
-  const [currentUser, setCurrentUser] = useState(null)
   const [actionError, setActionError] = useState(null)
   const [toggling, setToggling] = useState(false)
 
   useEffect(() => {
-    Promise.all([
-      fetch('/api/auth/users').then(r => r.json()),
-      fetch('/api/auth/me').then(r => r.json())
-    ]).then(([userData, me]) => {
-      setData(userData)
-      setCurrentUser(me)
-      setLoading(false)
-    }).catch((err) => {
-      setFetchError(err.message || 'Failed to load data')
-      setLoading(false)
-    })
+    fetch('/api/auth/users').then(r => r.json())
+      .then((userData) => {
+        setData(userData)
+        setLoading(false)
+      }).catch((err) => {
+        setFetchError(err.message || 'Failed to load data')
+        setLoading(false)
+      })
   }, [])
 
   async function handleInvite(e) {
@@ -79,7 +77,7 @@ export default function Admin() {
   if (loading) {
     return (
       <div className="min-h-screen bg-surface">
-        <NavBar user={currentUser} />
+        <NavBar />
         <div className="max-w-4xl mx-auto px-6 py-12 text-on-surface-variant">Loading...</div>
       </div>
     )
@@ -89,7 +87,7 @@ export default function Admin() {
 
   return (
     <div className="min-h-screen bg-surface">
-      <NavBar user={currentUser} />
+      <NavBar />
       <div className="max-w-4xl mx-auto px-6 py-10">
         <h1 className="text-2xl font-bold text-on-surface mb-1">User Management</h1>
         <p className="text-on-surface-variant text-sm mb-8">Invite team members and manage access to Giltee Ledger.</p>

@@ -2,9 +2,20 @@ import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { BrowserRouter } from 'react-router-dom'
 import Admin from '../Admin'
+import { AuthContext } from '../../context/AuthContext'
 
 // Mock fetch
 global.fetch = vi.fn()
+
+function renderWithAdminUser(ui) {
+  return render(
+    <BrowserRouter>
+      <AuthContext.Provider value={{ user: { id: 1, name: 'Adam', role: 'admin', email: 'adam@giltee.com' }, setUser: vi.fn() }}>
+        {ui}
+      </AuthContext.Provider>
+    </BrowserRouter>
+  )
+}
 
 beforeEach(() => {
   fetch.mockResolvedValue({
@@ -20,22 +31,22 @@ afterEach(() => vi.resetAllMocks())
 
 describe('Admin page', () => {
   it('renders the page title', async () => {
-    render(<BrowserRouter><Admin /></BrowserRouter>)
+    renderWithAdminUser(<Admin />)
     await waitFor(() => expect(screen.getByText('INVITE USER')).toBeInTheDocument())
   })
 
   it('lists users after loading', async () => {
-    render(<BrowserRouter><Admin /></BrowserRouter>)
+    renderWithAdminUser(<Admin />)
     await waitFor(() => expect(screen.getByText('adam@giltee.com')).toBeInTheDocument())
   })
 
   it('lists pending invitations', async () => {
-    render(<BrowserRouter><Admin /></BrowserRouter>)
+    renderWithAdminUser(<Admin />)
     await waitFor(() => expect(screen.getByText('grace@giltee.com')).toBeInTheDocument())
   })
 
   it('renders the invite form', async () => {
-    render(<BrowserRouter><Admin /></BrowserRouter>)
+    renderWithAdminUser(<Admin />)
     await waitFor(() => expect(screen.getByPlaceholderText(/email address/i)).toBeInTheDocument())
   })
 })
