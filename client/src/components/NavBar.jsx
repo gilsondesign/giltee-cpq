@@ -1,8 +1,18 @@
-import { NavLink } from 'react-router-dom'
+import { NavLink, useNavigate } from 'react-router-dom'
+import { useState } from 'react'
 import { useAuth } from '../context/AuthContext'
 
 export default function NavBar() {
   const { user } = useAuth()
+  const navigate = useNavigate()
+  const [searchQuery, setSearchQuery] = useState('')
+
+  function handleSearch(e) {
+    e.preventDefault()
+    const q = searchQuery.trim()
+    navigate(q ? `/?search=${encodeURIComponent(q)}` : '/')
+  }
+
   return (
     <nav className="bg-surface border-b border-outline-variant/30 px-6 py-0 flex items-center justify-between h-14">
       {/* Left: Wordmark */}
@@ -36,11 +46,15 @@ export default function NavBar() {
 
       {/* Right: Search + icons + avatar */}
       <div className="flex items-center gap-3">
-        <input
-          type="text"
-          placeholder="Search ledger..."
-          className="text-sm bg-surface-container-low rounded px-3 py-1.5 text-on-surface placeholder:text-on-surface-variant focus:outline-none focus:bg-surface-container-lowest w-44"
-        />
+        <form onSubmit={handleSearch}>
+          <input
+            type="text"
+            value={searchQuery}
+            onChange={e => setSearchQuery(e.target.value)}
+            placeholder="Search ledger..."
+            className="text-sm bg-surface-container-low rounded px-3 py-1.5 text-on-surface placeholder:text-on-surface-variant focus:outline-none focus:bg-surface-container-lowest w-44"
+          />
+        </form>
 
         {user?.role === 'admin' && (
           <NavLink
