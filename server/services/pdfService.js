@@ -18,12 +18,17 @@ const fonts = {
 
 const printer = new PdfPrinter(fonts)
 
-const LOGO_PATH = path.join(__dirname, '../assets/giltee-logo-white.png')
+const LOGO_WHITE_SVG_PATH = path.join(__dirname, '../../client/public/giltee-logo-white.svg')
+
+const logoWhiteSvg = fs.existsSync(LOGO_WHITE_SVG_PATH)
+  ? fs.readFileSync(LOGO_WHITE_SVG_PATH, 'utf8')
+  : null
 
 function getLogoContent() {
-  if (fs.existsSync(LOGO_PATH)) {
-    return { image: LOGO_PATH, width: 120, margin: [0, 4, 0, 4] }
+  if (logoWhiteSvg) {
+    return { svg: logoWhiteSvg, width: 130, margin: [0, 6, 0, 6] }
   }
+  // Fallback: styled wordmark
   return { text: 'Giltee', style: 'logoText', margin: [0, 8, 0, 8] }
 }
 
@@ -32,7 +37,7 @@ function formatCurrency(n) {
   return `$${Number(n).toFixed(2)}`
 }
 
-function buildDocDefinition(quote) {
+function buildDocDefinition(quote, supplier) {
   const intake = quote.intake_record || {}
   const customer = intake.customer || {}
   const product = intake.product || {}
@@ -40,8 +45,8 @@ function buildDocDefinition(quote) {
   const garment = quote.garment_data || {}
   const ospPricing = quote.pricing_osp || {}
   const redwallPricing = quote.pricing_redwall || {}
-  const recommended = quote.recommended_supplier || 'OSP'
-  const recommendedPricing = recommended === 'OSP' ? ospPricing : redwallPricing
+  const resolvedSupplier = supplier || quote.recommended_supplier || 'OSP'
+  const recommendedPricing = resolvedSupplier === 'REDWALL' ? redwallPricing : ospPricing
 
   const quoteDate = new Date(quote.created_at).toLocaleDateString('en-US', {
     year: 'numeric', month: 'long', day: 'numeric',
@@ -201,11 +206,12 @@ function buildDocDefinition(quote) {
 /**
  * Generate a branded Giltee quote PDF.
  * @param {object} quoteData — quote record from the database
+ * @param {string} [supplier] — 'OSP' or 'REDWALL'; defaults to quoteData.recommended_supplier
  * @returns {Promise<Buffer>}
  */
-function generateQuotePDF(quoteData) {
+function generateQuotePDF(quoteData, supplier) {
   return new Promise((resolve, reject) => {
-    const docDefinition = buildDocDefinition(quoteData)
+    const docDefinition = buildDocDefinition(quoteData, supplier)
     const pdfDoc = printer.createPdfKitDocument(docDefinition)
     const chunks = []
     pdfDoc.on('data', chunk => chunks.push(chunk))

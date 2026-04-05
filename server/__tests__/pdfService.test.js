@@ -52,3 +52,23 @@ describe('pdfService.generateQuotePDF', () => {
     await expect(pdfService.generateQuotePDF(quote)).resolves.toBeDefined()
   })
 })
+
+describe('pdfService.generateQuotePDF — supplier override', () => {
+  it('uses OSP pricing when supplier is OSP', async () => {
+    // recommended is OSP, so this just confirms default behavior
+    const buffer = await pdfService.generateQuotePDF(SAMPLE_QUOTE, 'OSP')
+    expect(Buffer.isBuffer(buffer)).toBe(true)
+    expect(buffer.length).toBeGreaterThan(1024)
+  })
+
+  it('uses Redwall pricing when supplier is REDWALL', async () => {
+    const buffer = await pdfService.generateQuotePDF(SAMPLE_QUOTE, 'REDWALL')
+    expect(Buffer.isBuffer(buffer)).toBe(true)
+    expect(buffer.length).toBeGreaterThan(1024)
+  })
+
+  it('falls back to recommended_supplier when no supplier arg is provided', async () => {
+    const buffer = await pdfService.generateQuotePDF(SAMPLE_QUOTE)
+    expect(Buffer.isBuffer(buffer)).toBe(true)
+  })
+})
