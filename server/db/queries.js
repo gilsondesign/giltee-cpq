@@ -83,10 +83,11 @@ async function getNextQuoteId() {
 async function createQuote(data) {
   const id = await getNextQuoteId()
   const { rows } = await pool.query(
-    `INSERT INTO quotes (id, status, customer_name, customer_email, project_name, raw_input, created_by)
-     VALUES ($1, 'draft', $2, $3, $4, $5, $6)
+    `INSERT INTO quotes (id, status, customer_name, customer_email, project_name, raw_input, intake_record, created_by)
+     VALUES ($1, 'draft', $2, $3, $4, $5, $6, $7)
      RETURNING *`,
-    [id, data.customerName, data.customerEmail, data.projectName, data.rawInput, data.createdBy]
+    [id, data.customerName, data.customerEmail, data.projectName, data.rawInput,
+     data.intakeRecord ? JSON.stringify(data.intakeRecord) : null, data.createdBy]
   )
   return rows[0]
 }
@@ -119,15 +120,24 @@ async function listQuotes({ status, search } = {}) {
 const UPDATABLE_QUOTE_COLUMNS = new Set([
   'status', 'customer_name', 'customer_email', 'project_name',
   'raw_input', 'intake_record', 'garment_data', 'pricing_osp',
-  'pricing_redwall', 'recommended_supplier', 'qa_report',
+  'pricing_redwall', 'recommended_supplier', 'selected_supplier', 'qa_report',
   'email_draft', 'gmail_draft_id', 'pdf_url', 'activity_log'
+])
+
+const JSONB_COLUMNS = new Set([
+  'intake_record', 'garment_data', 'pricing_osp', 'pricing_redwall',
+  'qa_report', 'activity_log'
 ])
 
 async function updateQuote(id, fields) {
   const keys = Object.keys(fields).filter(k => UPDATABLE_QUOTE_COLUMNS.has(k))
   if (keys.length === 0) throw new Error('No valid fields to update')
 
-  const values = keys.map(k => fields[k])
+  const values = keys.map(k =>
+    JSONB_COLUMNS.has(k) && fields[k] !== null && typeof fields[k] === 'object'
+      ? JSON.stringify(fields[k])
+      : fields[k]
+  )
   const setClause = keys.map((k, i) => `${k} = $${i + 2}`).join(', ')
 
   const { rows } = await pool.query(
