@@ -55,7 +55,7 @@ function parseEmailResponse(text) {
 async function runQuotePipeline(quoteId) {
   const quote = await queries.getQuote(quoteId)
   if (!quote) throw new Error(`Quote ${quoteId} not found`)
-  if (!quote.raw_input) throw new Error(`Quote ${quoteId} has no raw_input`)
+  if (!quote.raw_input && !quote.intake_record) throw new Error(`Quote ${quoteId} has no input to process`)
 
   await queries.updateQuote(quoteId, {
     status: 'processing',
@@ -64,9 +64,15 @@ async function runQuotePipeline(quoteId) {
 
   try {
     // ── Step 1: Intake ──────────────────────────────────────────────────────
-    const intakeText = await claudeService.callClaude({
-      systemPrompt: skills.INTAKE,
-      userPrompt: `Process the following customer inquiry and extract a structured intake record.
+    // Skip Claude extraction if intake_record was manually edited and saved
+    let intake_record
+    if (quote.intake_record) {
+      intake_record = quote.intake_record
+      await appendLog(quoteId, 'Using saved intake record')
+    } else {
+      const intakeText = await claudeService.callClaude({
+        systemPrompt: skills.INTAKE,
+        userPrompt: `Process the following customer inquiry and extract a structured intake record.
 
 Customer inquiry:
 ${quote.raw_input}
@@ -82,18 +88,26 @@ Return ONLY valid JSON matching this schema (use null for unknown fields):
   "missing_fields": []
 }
 For decoration.method use: SCREEN_PRINT, DTF, DTG, or EMBROIDERY
-For decoration.locations[].print_size use: STANDARD, OVERSIZED, or JUMBO`,
-    })
+For decoration.locations[].print_size use: STANDARD, OVERSIZED, or JUMBO
+For product.size_breakdown: extract any size quantities mentioned (e.g. "10 smalls, 20 mediums, 20 larges, 10 XL" → "S:10, M:20, L:20, XL:10"). Use codes: XS, S, M, L, XL, 2XL, 3XL, 4XL, 5XL, YXS, YS, YM, YL, YXL. If no breakdown is given, set to null.`,
+      })
+      intake_record = claudeService.parseJSONFromText(intakeText)
+      await queries.updateQuote(quoteId, { intake_record })
+      await appendLog(quoteId, 'Intake complete', { status: intake_record.status })
+    }
 
-    const intake_record = claudeService.parseJSONFromText(intakeText)
-    await queries.updateQuote(quoteId, { intake_record })
-    await appendLog(quoteId, 'Intake complete', { status: intake_record.status })
-
-    // Update customer fields on the quote record if extracted
+    // Sync customer name/email between top-level quote fields and intake_record.customer
     const updates = {}
     if (intake_record.customer?.name && !quote.customer_name) updates.customer_name = intake_record.customer.name
     if (intake_record.customer?.email && !quote.customer_email) updates.customer_email = intake_record.customer.email
-    if (Object.keys(updates).length) await queries.updateQuote(quoteId, updates)
+
+    // Backfill intake_record.customer from top-level fields if missing
+    if (!intake_record.customer) intake_record.customer = {}
+    if (!intake_record.customer.name && quote.customer_name) intake_record.customer.name = quote.customer_name
+    if (!intake_record.customer.email && quote.customer_email) intake_record.customer.email = quote.customer_email
+
+    updates.intake_record = intake_record
+    await queries.updateQuote(quoteId, updates)
 
     // ── Step 2: Garment lookup ──────────────────────────────────────────────
     let garment_data = null
@@ -142,14 +156,23 @@ For decoration.locations[].print_size use: STANDARD, OVERSIZED, or JUMBO`,
     await appendLog(quoteId, 'Pricing complete', { recommended: recommended_supplier })
 
     // ── Step 4: QA ──────────────────────────────────────────────────────────
+    // Fetch latest quote state so QA has the most up-to-date top-level fields
+    const currentQuoteForQA = await queries.getQuote(quoteId)
     const qaText = await claudeService.callClaude({
       systemPrompt: skills.QA,
       userPrompt: `Run the complete QA checklist on this quote data.
 
+Quote fields: ${JSON.stringify({
+        customer_name: currentQuoteForQA.customer_name,
+        customer_email: currentQuoteForQA.customer_email,
+        project_name: currentQuoteForQA.project_name,
+      })}
 Intake record: ${JSON.stringify(intake_record)}
 Garment data: ${JSON.stringify(garment_data)}
 OSP pricing: ${JSON.stringify(pricing_osp)}
 Redwall pricing: ${JSON.stringify(pricing_redwall)}
+
+Note: customer_name and customer_email may be stored either in "Quote fields" above or inside intake_record.customer — treat either location as valid.
 
 Return ONLY valid JSON:
 {
@@ -168,7 +191,8 @@ For status use: APPROVED, NEEDS_FIXES, or BLOCKED`,
     await appendLog(quoteId, 'QA complete', { status: qa_report.status })
 
     // ── Step 5: Email draft ─────────────────────────────────────────────────
-    const recommendedPricing = recommended_supplier === 'REDWALL' ? pricing_redwall : pricing_osp
+    const effectiveSupplier = quote.selected_supplier || recommended_supplier
+    const effectivePricing = effectiveSupplier === 'REDWALL' ? pricing_redwall : pricing_osp
     const emailText = await claudeService.callClaude({
       systemPrompt: skills.EMAIL_DRAFTING,
       userPrompt: `Draft the customer email for the following quote. Write in Lisa's voice exactly as described.
@@ -177,7 +201,7 @@ Customer: ${intake_record.customer?.name || quote.customer_name || 'Customer'}
 Email: ${intake_record.customer?.email || quote.customer_email || ''}
 Order: ${quantity} × ${brandStyle || 'garment'} — ${decorationMethod}
 Color: ${requestedColor || ''}
-Total: ${formatCurrency(recommendedPricing?.orderTotal)} (${recommended_supplier})
+Total: ${formatCurrency(effectivePricing?.orderTotal)} (${effectiveSupplier})
 QA status: ${qa_report.status}
 ${qa_report.failed?.length ? `QA flags: ${qa_report.failed.map(f => f.issue).join('; ')}` : ''}
 
@@ -195,29 +219,45 @@ SUBJECT: [subject line]
 
     // ── Step 6: PDF ─────────────────────────────────────────────────────────
     const currentQuote = await queries.getQuote(quoteId)
-    const pdfBuffer = await pdfService.generateQuotePDF(currentQuote)
+    const pdfBuffer = await pdfService.generateQuotePDF(currentQuote, effectiveSupplier)
     await appendLog(quoteId, 'PDF generated')
 
-    // ── Step 7: Drive upload ─────────────────────────────────────────────────
+    // ── Step 7: Drive upload (optional — skipped if credentials not configured) ─
     const pdfFilename = `${quoteId}-${(quote.customer_name || 'Quote').replace(/\s+/g, '-')}-Quote.pdf`
-    const driveResult = await driveService.uploadPDF(pdfBuffer, pdfFilename)
-    await queries.updateQuote(quoteId, { pdf_url: driveResult.url })
-    await appendLog(quoteId, 'PDF uploaded to Drive', { url: driveResult.url })
+    const driveConfigured = process.env.GMAIL_CLIENT_ID && !process.env.GMAIL_CLIENT_ID.startsWith('your_')
+    if (driveConfigured) {
+      try {
+        const driveResult = await driveService.uploadPDF(pdfBuffer, pdfFilename)
+        await queries.updateQuote(quoteId, { pdf_url: driveResult.url })
+        await appendLog(quoteId, 'PDF uploaded to Drive', { url: driveResult.url })
+      } catch (err) {
+        await appendLog(quoteId, 'Drive upload skipped', { warning: err.message })
+      }
+    } else {
+      await appendLog(quoteId, 'Drive upload skipped — credentials not configured')
+    }
 
-    // ── Step 8: Gmail draft ──────────────────────────────────────────────────
+    // ── Step 8: Gmail draft (optional — skipped if credentials not configured) ─
+    const gmailConfigured = driveConfigured && process.env.GMAIL_REFRESH_TOKEN && !process.env.GMAIL_REFRESH_TOKEN.startsWith('your_')
     const recipientEmail = intake_record.customer?.email || quote.customer_email
-    if (!recipientEmail) {
+    if (!gmailConfigured) {
+      await appendLog(quoteId, 'Gmail draft skipped — credentials not configured')
+    } else if (!recipientEmail) {
       await appendLog(quoteId, 'Gmail draft skipped — no recipient email')
     } else {
-      const draftId = await gmailService.createDraft({
-        to: recipientEmail,
-        subject: emailSubject,
-        body: emailBody,
-        pdfBuffer,
-        pdfFilename,
-      })
-      await queries.updateQuote(quoteId, { gmail_draft_id: draftId })
-      await appendLog(quoteId, 'Gmail draft created', { draftId })
+      try {
+        const draftId = await gmailService.createDraft({
+          to: recipientEmail,
+          subject: emailSubject,
+          body: emailBody,
+          pdfBuffer,
+          pdfFilename,
+        })
+        await queries.updateQuote(quoteId, { gmail_draft_id: draftId })
+        await appendLog(quoteId, 'Gmail draft created', { draftId })
+      } catch (err) {
+        await appendLog(quoteId, 'Gmail draft skipped', { warning: err.message })
+      }
     }
 
     // ── Complete ─────────────────────────────────────────────────────────────

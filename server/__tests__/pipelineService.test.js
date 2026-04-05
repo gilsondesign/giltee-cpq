@@ -113,4 +113,27 @@ describe('pipelineService.runQuotePipeline', () => {
     queries.getQuote.mockResolvedValue({ ...MOCK_QUOTE, raw_input: null })
     await expect(pipelineService.runQuotePipeline('GL-00001')).rejects.toThrow()
   })
+
+  it('uses selected_supplier for email and PDF when set', async () => {
+    // Quote has selected_supplier = REDWALL, but recommended = OSP
+    queries.getQuote.mockResolvedValue({
+      ...MOCK_QUOTE,
+      selected_supplier: 'REDWALL',
+      intake_record: MOCK_INTAKE_JSON,
+    })
+
+    await pipelineService.runQuotePipeline('GL-00001')
+
+    // Email prompt should reference REDWALL total ($877.20), not OSP ($725.80)
+    const emailCall = claudeService.callClaude.mock.calls.find(
+      call => call[0].userPrompt?.includes('REDWALL')
+    )
+    expect(emailCall).toBeDefined()
+
+    // pdfService should be called with 'REDWALL' as second arg
+    expect(pdfService.generateQuotePDF).toHaveBeenCalledWith(
+      expect.anything(),
+      'REDWALL'
+    )
+  })
 })
