@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useRef } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { Link, useParams } from 'react-router-dom'
 import NavBar from '../components/NavBar'
 import StatusBadge from '../components/StatusBadge'

@@ -78,9 +78,9 @@ describe('ViewQuote — draft', () => {
     await waitFor(() => expect(screen.getByText('Kohn Law')).toBeInTheDocument())
   })
 
-  it('shows a Run Pipeline button for draft quotes', async () => {
+  it('shows a Run Quote button for draft quotes', async () => {
     renderViewQuote()
-    await waitFor(() => expect(screen.getByRole('button', { name: /run pipeline/i })).toBeInTheDocument())
+    await waitFor(() => expect(screen.getByRole('button', { name: /run quote/i })).toBeInTheDocument())
   })
 
   it('shows an Edit button for non-processing quotes', async () => {
@@ -107,17 +107,29 @@ describe('ViewQuote — ready', () => {
   })
 
   it('shows QA status', async () => {
+    const { default: userEvent } = await import('@testing-library/user-event')
+    const user = userEvent.setup()
     renderViewQuote(MOCK_QUOTE_READY)
+    await waitFor(() => screen.getByRole('button', { name: /qa report/i }))
+    await user.click(screen.getByRole('button', { name: /qa report/i }))
     await waitFor(() => expect(screen.getByText('APPROVED')).toBeInTheDocument())
   })
 
   it('shows email draft content', async () => {
+    const { default: userEvent } = await import('@testing-library/user-event')
+    const user = userEvent.setup()
     renderViewQuote(MOCK_QUOTE_READY)
+    await waitFor(() => screen.getByRole('button', { name: /email draft/i }))
+    await user.click(screen.getByRole('button', { name: /email draft/i }))
     await waitFor(() => expect(screen.getByText(/here is your quote/i)).toBeInTheDocument())
   })
 
   it('shows PDF download and preview links', async () => {
+    const { default: userEvent } = await import('@testing-library/user-event')
+    const user = userEvent.setup()
     renderViewQuote(MOCK_QUOTE_READY)
+    await waitFor(() => screen.getByRole('button', { name: /quote pdf/i }))
+    await user.click(screen.getByRole('button', { name: /quote pdf/i }))
     await waitFor(() => expect(screen.getByRole('link', { name: /download/i })).toBeInTheDocument())
     expect(screen.getByRole('link', { name: /open in new tab/i })).toBeInTheDocument()
   })
