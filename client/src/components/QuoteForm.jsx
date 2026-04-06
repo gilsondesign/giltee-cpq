@@ -168,26 +168,26 @@ export default function QuoteForm({ fields, setFields }) {
             <EditField label="Stitch count" type="number" value={fields.stitch_count} onChange={v => setFields(f => ({ ...f, stitch_count: v }))} placeholder="e.g. 8000" />
           )}
           <EditField label="Special inks" value={fields.special_inks} onChange={v => setFields(f => ({ ...f, special_inks: v }))} placeholder="PMS, metallic (comma-separated)" />
-        {fields.decoration_method === 'SCREEN_PRINT' && (
-          <div className="flex gap-4 py-2 items-center border-b border-outline-variant/20 col-span-2">
-            <span className="text-xs text-on-surface-variant w-28 shrink-0">Preferred manufacturer</span>
-            <div className="flex gap-6">
-              {['OSP', 'REDWALL'].map(s => (
-                <label key={s} className="flex items-center gap-1.5 cursor-pointer">
-                  <input
-                    type="radio"
-                    name="selected_supplier"
-                    value={s}
-                    checked={fields.selected_supplier === s}
-                    onChange={() => setFields(f => ({ ...f, selected_supplier: s }))}
-                    className="accent-primary"
-                  />
-                  <span className="text-sm text-on-surface">{s === 'REDWALL' ? 'Redwall' : 'OSP'}</span>
-                </label>
-              ))}
+          {fields.decoration_method === 'SCREEN_PRINT' && (
+            <div className="flex gap-4 py-2 items-center border-b border-outline-variant/20 col-span-2">
+              <span className="text-xs text-on-surface-variant w-28 shrink-0">Preferred manufacturer</span>
+              <div className="flex gap-6">
+                {['OSP', 'REDWALL'].map(s => (
+                  <label key={s} className="flex items-center gap-1.5 cursor-pointer">
+                    <input
+                      type="radio"
+                      name="selected_supplier"
+                      value={s}
+                      checked={fields.selected_supplier === s}
+                      onChange={() => setFields(f => ({ ...f, selected_supplier: s }))}
+                      className="accent-primary"
+                    />
+                    <span className="text-sm text-on-surface">{s === 'REDWALL' ? 'Redwall' : 'OSP'}</span>
+                  </label>
+                ))}
+              </div>
             </div>
-          </div>
-        )}
+          )}
         </div>
 
         <p className="text-xs text-on-surface-variant mb-2">Print locations</p>
