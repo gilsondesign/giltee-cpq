@@ -82,6 +82,22 @@ describe('ViewQuote — draft', () => {
     renderViewQuote()
     await waitFor(() => expect(screen.getByRole('button', { name: /run pipeline/i })).toBeInTheDocument())
   })
+
+  it('shows an Edit button for non-processing quotes', async () => {
+    renderViewQuote()
+    await waitFor(() => expect(screen.getByRole('button', { name: /edit/i })).toBeInTheDocument())
+  })
+
+  it('opens edit panel when Edit is clicked', async () => {
+    const { default: userEvent } = await import('@testing-library/user-event')
+    const user = userEvent.setup()
+    renderViewQuote()
+    await waitFor(() => screen.getByRole('button', { name: /edit/i }))
+    await user.click(screen.getByRole('button', { name: /edit/i }))
+    expect(screen.getByPlaceholderText(/name or organization/i)).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /save changes/i })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /cancel/i })).toBeInTheDocument()
+  })
 })
 
 describe('ViewQuote — ready', () => {
@@ -100,8 +116,44 @@ describe('ViewQuote — ready', () => {
     await waitFor(() => expect(screen.getByText(/here is your quote/i)).toBeInTheDocument())
   })
 
-  it('shows PDF link when pdf_url is set', async () => {
+  it('shows PDF download and preview links', async () => {
     renderViewQuote(MOCK_QUOTE_READY)
-    await waitFor(() => expect(screen.getByRole('link', { name: /view pdf/i })).toBeInTheDocument())
+    await waitFor(() => expect(screen.getByRole('link', { name: /download/i })).toBeInTheDocument())
+    expect(screen.getByRole('link', { name: /open in new tab/i })).toBeInTheDocument()
+  })
+})
+
+describe('ViewQuote — manufacturer selection', () => {
+  it('shows Selected badge on the overridden supplier when selected_supplier differs from recommended', async () => {
+    const quoteWithOverride = {
+      ...MOCK_QUOTE_READY,
+      recommended_supplier: 'OSP',
+      selected_supplier: 'REDWALL',
+    }
+    renderViewQuote(quoteWithOverride)
+    await waitFor(() => expect(screen.getByText('$877.20')).toBeInTheDocument())
+    expect(screen.getByText('Selected')).toBeInTheDocument()
+    expect(screen.getByText('Recommended')).toBeInTheDocument()
+  })
+
+  it('does not show Selected badge when selected_supplier matches recommended', async () => {
+    const quoteNoOverride = {
+      ...MOCK_QUOTE_READY,
+      recommended_supplier: 'OSP',
+      selected_supplier: 'OSP',
+    }
+    renderViewQuote(quoteNoOverride)
+    await waitFor(() => expect(screen.getByText('$725.80')).toBeInTheDocument())
+    expect(screen.queryByText('Selected')).not.toBeInTheDocument()
+  })
+
+  it('shows manufacturer radios in edit panel for screen print quote', async () => {
+    const { default: userEvent } = await import('@testing-library/user-event')
+    const user = userEvent.setup()
+    renderViewQuote(MOCK_QUOTE_READY)
+    await waitFor(() => screen.getByRole('button', { name: /edit/i }))
+    await user.click(screen.getByRole('button', { name: /edit/i }))
+    expect(screen.getByRole('radio', { name: /osp/i })).toBeInTheDocument()
+    expect(screen.getByRole('radio', { name: /redwall/i })).toBeInTheDocument()
   })
 })
