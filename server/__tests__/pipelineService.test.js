@@ -40,6 +40,8 @@ const MOCK_PRICING = { osp: { perUnitTotal: 11.43, setupFees: { screenSetup: 40 
 const MOCK_QA = { passed_count: 18, total_count: 20, failed: [], unable_to_verify: [], status: 'APPROVED', reviewer_notes: '' }
 
 beforeEach(() => {
+  process.env.GMAIL_CLIENT_ID = 'test-client-id'
+  process.env.GMAIL_REFRESH_TOKEN = 'test-refresh-token'
   jest.clearAllMocks()
 
   queries.getQuote.mockResolvedValue({ ...MOCK_QUOTE })
@@ -59,6 +61,11 @@ beforeEach(() => {
   pdfService.generateQuotePDF.mockResolvedValue(Buffer.from('fake-pdf'))
   driveService.uploadPDF.mockResolvedValue({ fileId: 'file-123', url: 'https://drive.google.com/file-123' })
   gmailService.createDraft.mockResolvedValue('draft-456')
+})
+
+afterEach(() => {
+  delete process.env.GMAIL_CLIENT_ID
+  delete process.env.GMAIL_REFRESH_TOKEN
 })
 
 describe('pipelineService.runQuotePipeline', () => {
@@ -126,7 +133,7 @@ describe('pipelineService.runQuotePipeline', () => {
 
     // Email prompt should reference REDWALL total ($877.20), not OSP ($725.80)
     const emailCall = claudeService.callClaude.mock.calls.find(
-      call => call[0].userPrompt?.includes('REDWALL')
+      call => call[0].userPrompt?.includes('REDWALL') && call[0].userPrompt?.includes('877.20')
     )
     expect(emailCall).toBeDefined()
 
