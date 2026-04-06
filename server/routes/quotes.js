@@ -98,7 +98,6 @@ router.post('/:id/draft', async (req, res, next) => {
     if (!quote.intake_record) return res.status(400).json({ error: 'Quote has not been processed yet' })
 
     const gmailService = require('../services/gmailService')
-    const pdfService = require('../services/pdfService')
 
     const gmailConfigured = process.env.GMAIL_CLIENT_ID && !process.env.GMAIL_CLIENT_ID.startsWith('your_')
       && process.env.GMAIL_REFRESH_TOKEN && !process.env.GMAIL_REFRESH_TOKEN.startsWith('your_')
