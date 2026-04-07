@@ -21,32 +21,32 @@ describe('getMarginForQuantity', () => {
 })
 
 describe('getOspDecorationCost', () => {
-  it('returns correct OSP cost for 48-95 tier, 2 colors', () => {
-    expect(pricingService.getOspDecorationCost(60, 2)).toBe(2.24)
+  it('returns correct OSP cost for 48-95 tier, 2 colors', async () => {
+    expect(await pricingService.getOspDecorationCost(60, 2)).toBe(2.24)
   })
-  it('returns correct OSP cost for 24-47 tier, 1 color', () => {
-    expect(pricingService.getOspDecorationCost(36, 1)).toBe(3.00)
+  it('returns correct OSP cost for 24-47 tier, 1 color', async () => {
+    expect(await pricingService.getOspDecorationCost(36, 1)).toBe(3.00)
   })
-  it('returns correct OSP cost for 144-299 tier, 4 colors', () => {
-    expect(pricingService.getOspDecorationCost(150, 4)).toBe(2.63)
+  it('returns correct OSP cost for 144-299 tier, 4 colors', async () => {
+    expect(await pricingService.getOspDecorationCost(150, 4)).toBe(2.63)
   })
-  it('returns null when quantity is below minimum for OSP table (below 12)', () => {
-    expect(pricingService.getOspDecorationCost(5, 1)).toBeNull()
+  it('returns null when quantity is below minimum for OSP table (below 12)', async () => {
+    expect(await pricingService.getOspDecorationCost(5, 1)).toBeNull()
   })
 })
 
 describe('getRedwallDecorationCost', () => {
-  it('returns correct Redwall cost for 48-95 tier, 2 colors', () => {
-    expect(pricingService.getRedwallDecorationCost(60, 2)).toBe(3.22)
+  it('returns correct Redwall cost for 48-95 tier, 2 colors', async () => {
+    expect(await pricingService.getRedwallDecorationCost(60, 2)).toBe(3.22)
   })
-  it('returns correct Redwall cost for 96-143 tier, 3 colors', () => {
-    expect(pricingService.getRedwallDecorationCost(100, 3)).toBe(3.29)
+  it('returns correct Redwall cost for 96-143 tier, 3 colors', async () => {
+    expect(await pricingService.getRedwallDecorationCost(100, 3)).toBe(3.29)
   })
 })
 
 describe('calculateScreenPrintQuote', () => {
-  it('calculates correct per-unit and total for a 60-unit, 2-color, single-location order', () => {
-    const result = pricingService.calculateScreenPrintQuote({
+  it('calculates correct per-unit and total for a 60-unit, 2-color, single-location order', async () => {
+    const result = await pricingService.calculateScreenPrintQuote({
       quantity: 60,
       garmentCostPerUnit: 4.50,
       locations: [{ colorCount: 2, printSize: 'STANDARD' }],
@@ -64,8 +64,8 @@ describe('calculateScreenPrintQuote', () => {
     expect(result.osp.orderTotal).toBeCloseTo(60 * 11.43 + 40, 2)
   })
 
-  it('waives OSP setup fees at 96+ pieces', () => {
-    const result = pricingService.calculateScreenPrintQuote({
+  it('waives OSP setup fees at 96+ pieces', async () => {
+    const result = await pricingService.calculateScreenPrintQuote({
       quantity: 100,
       garmentCostPerUnit: 4.50,
       locations: [{ colorCount: 2, printSize: 'STANDARD' }],
@@ -75,13 +75,13 @@ describe('calculateScreenPrintQuote', () => {
     expect(result.osp.setupFees.screenSetup).toBe(0)
   })
 
-  it('adds underbase color to count on dark garments', () => {
-    const resultLight = pricingService.calculateScreenPrintQuote({
+  it('adds underbase color to count on dark garments', async () => {
+    const resultLight = await pricingService.calculateScreenPrintQuote({
       quantity: 60, garmentCostPerUnit: 4.50,
       locations: [{ colorCount: 2, printSize: 'STANDARD' }],
       isDarkGarment: false, isReorder: false,
     })
-    const resultDark = pricingService.calculateScreenPrintQuote({
+    const resultDark = await pricingService.calculateScreenPrintQuote({
       quantity: 60, garmentCostPerUnit: 4.50,
       locations: [{ colorCount: 2, printSize: 'STANDARD' }],
       isDarkGarment: true, isReorder: false,
@@ -92,8 +92,8 @@ describe('calculateScreenPrintQuote', () => {
     expect(resultLight.osp.perUnitDecoration).toBe(2.24)
   })
 
-  it('waives Redwall setup fees at 144+ pieces', () => {
-    const result = pricingService.calculateScreenPrintQuote({
+  it('waives Redwall setup fees at 144+ pieces', async () => {
+    const result = await pricingService.calculateScreenPrintQuote({
       quantity: 150,
       garmentCostPerUnit: 4.50,
       locations: [{ colorCount: 3, printSize: 'STANDARD' }],
