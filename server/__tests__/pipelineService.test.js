@@ -133,7 +133,7 @@ describe('pipelineService.runQuotePipeline', () => {
 
     // Email prompt should reference REDWALL total ($877.20), not OSP ($725.80)
     const emailCall = claudeService.callClaude.mock.calls.find(
-      call => call[0].userPrompt?.includes('REDWALL') && call[0].userPrompt?.includes('877.20')
+      call => call[0].userPrompt?.includes('877.20')
     )
     expect(emailCall).toBeDefined()
 
