@@ -32,9 +32,13 @@ router.post('/', async (req, res, next) => {
       createdBy: req.user?.email || 'unknown',
     })
     // Link to customer if provided
-    if (req.body.customer_id) {
-      await queries.updateQuote(quote.id, { customer_id: req.body.customer_id })
-      quote.customer_id = req.body.customer_id
+    if (req.body.customer_id !== undefined && req.body.customer_id !== null) {
+      const customerId = parseInt(req.body.customer_id, 10)
+      if (!Number.isFinite(customerId) || customerId < 1) {
+        return res.status(400).json({ error: 'Invalid customer_id' })
+      }
+      await queries.updateQuote(quote.id, { customer_id: customerId })
+      quote.customer_id = customerId
     }
     res.status(201).json(quote)
   } catch (err) {
