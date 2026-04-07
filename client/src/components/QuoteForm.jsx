@@ -1,4 +1,4 @@
-import { useEffect } from 'react'
+import { useEffect, useState } from 'react'
 import CustomerPicker from './CustomerPicker'
 
 // ─── Constants ────────────────────────────────────────────────────────────────
@@ -165,6 +165,38 @@ function Check({ id, label, checked, onChange }) {
 // ─── Product card ─────────────────────────────────────────────────────────────
 function ProductCard({ product, index, onChange, onRemove, canRemove }) {
   const expanded = product._expanded ?? true
+  const [styleMismatchWarning, setStyleMismatchWarning] = useState(null)
+
+  useEffect(() => {
+    const { brand_style, product_type, colors } = product
+    if (!brand_style || (product_type !== 'youth' && product_type !== 'toddler')) {
+      setStyleMismatchWarning(null)
+      return
+    }
+    const color = (colors && colors[0]) || ''
+    fetch(`/api/garments/lookup?style=${encodeURIComponent(brand_style)}&color=${encodeURIComponent(color)}`)
+      .then(r => r.ok ? r.json() : null)
+      .then(data => {
+        if (!data || !Array.isArray(data.skus)) {
+          setStyleMismatchWarning(null)
+          return
+        }
+        const youthSizes = ['YXS', 'YS', 'YM', 'YL', 'YXL']
+        const toddlerSizes = ['2T', '4T', '6T']
+        const targetSizes = product_type === 'toddler' ? toddlerSizes : youthSizes
+        const hasMatch = data.skus.some(sku => targetSizes.includes(sku.size))
+        if (!hasMatch) {
+          setStyleMismatchWarning(
+            product_type === 'toddler'
+              ? 'Toddler sizes require a toddler garment style. Update the style or change the product type.'
+              : 'Youth sizes require a youth garment style (e.g. 3001YCVC). Update the style or change the product type.'
+          )
+        } else {
+          setStyleMismatchWarning(null)
+        }
+      })
+      .catch(() => setStyleMismatchWarning(null))
+  }, [product.brand_style, product.product_type, product.colors]) // eslint-disable-line react-hooks/exhaustive-deps
 
   function set(key, val) {
     onChange({ ...product, [key]: val })
@@ -222,6 +254,9 @@ function ProductCard({ product, index, onChange, onRemove, canRemove }) {
               <Field label="Quantity" type="number" value={product.quantity} onChange={v => set('quantity', v)} placeholder="e.g. 60" />
               <Field label="Colors" value={product.colors} onChange={v => set('colors', v)} placeholder="Navy, White (comma-separated)" className="col-span-2" />
             </div>
+            {styleMismatchWarning && (
+              <p role="alert" style={{ color: 'red' }}>{styleMismatchWarning}</p>
+            )}
 
             {/* Product type selector */}
             <div className="flex gap-3 py-2 items-center border-b border-outline-variant/20 mt-3">

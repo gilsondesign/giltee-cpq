@@ -215,3 +215,80 @@ describe('ProductCard UI', () => {
     expect(screen.queryByLabelText(/include youth sizes/i)).not.toBeInTheDocument()
   })
 })
+
+// ─── ProductCard style mismatch warning ──────────────────────────────────────
+describe('ProductCard style mismatch warning', () => {
+  function renderWithProduct(overrides = {}) {
+    const product = { ...buildEmptyProduct(), ...overrides }
+    const fields = {
+      customer_id: null,
+      linked_customer: null,
+      customer_name: '',
+      customer_email: '',
+      project_name: '',
+      event_purpose: '',
+      deadline: '',
+      rush: false,
+      returning: false,
+      selected_supplier: 'OSP',
+      notes: '',
+      local_pickup: false,
+      shipping_address: '',
+      shipping_city: '',
+      shipping_state: '',
+      shipping_zip: '',
+      products: [product],
+    }
+    const setFields = vi.fn()
+    return render(<QuoteForm fields={fields} setFields={setFields} />)
+  }
+
+  afterEach(() => vi.restoreAllMocks())
+
+  it('shows youth warning when S&S returns only adult SKUs for youth product', async () => {
+    global.fetch = vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({ skus: [{ size: 'S' }, { size: 'M' }, { size: 'L' }] }),
+    })
+    renderWithProduct({ product_type: 'youth', brand_style: '3001CVC' })
+    expect(await screen.findByRole('alert')).toHaveTextContent('Youth sizes require a youth garment style')
+  })
+
+  it('shows no warning when S&S returns youth SKUs for youth product', async () => {
+    global.fetch = vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({ skus: [{ size: 'YS' }, { size: 'YM' }] }),
+    })
+    renderWithProduct({ product_type: 'youth', brand_style: '3001YCVC' })
+    // Wait a tick for effects to resolve, then confirm no alert
+    await new Promise(r => setTimeout(r, 50))
+    expect(screen.queryByRole('alert')).not.toBeInTheDocument()
+  })
+
+  it('shows toddler warning when S&S returns only adult SKUs for toddler product', async () => {
+    global.fetch = vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({ skus: [{ size: 'S' }, { size: 'M' }] }),
+    })
+    renderWithProduct({ product_type: 'toddler', brand_style: '3001CVC' })
+    expect(await screen.findByRole('alert')).toHaveTextContent('Toddler sizes require a toddler garment style')
+  })
+
+  it('shows no warning when lookup fails', async () => {
+    global.fetch = vi.fn().mockRejectedValue(new Error('network error'))
+    renderWithProduct({ product_type: 'youth', brand_style: '3001CVC' })
+    await new Promise(r => setTimeout(r, 50))
+    expect(screen.queryByRole('alert')).not.toBeInTheDocument()
+  })
+
+  it('shows no warning for adult product type even with brand_style set', async () => {
+    // fetch should not be called at all for adult, but mock it in case
+    global.fetch = vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({ skus: [{ size: 'S' }] }),
+    })
+    renderWithProduct({ product_type: 'adult', brand_style: '3001CVC' })
+    await new Promise(r => setTimeout(r, 50))
+    expect(screen.queryByRole('alert')).not.toBeInTheDocument()
+  })
+})
