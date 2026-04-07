@@ -59,7 +59,10 @@ export default function AdminPricing() {
     setSaveMsg(null)
     setError(null)
     fetch(`/api/pricing/${activeTab}`, { credentials: 'include' })
-      .then(r => r.json())
+      .then(r => {
+        if (!r.ok) throw new Error('Failed to load pricing config')
+        return r.json()
+      })
       .then(data => {
         setConfig(data.config)
         setMeta({ source: data.source, updated_at: data.updated_at, updated_by: data.updated_by })
