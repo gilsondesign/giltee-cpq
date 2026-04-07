@@ -72,6 +72,9 @@ router.patch('/:id', async (req, res, next) => {
     const stats = await customerQueries.getCustomerStats(customer.id)
     res.json({ ...customer, ...stats })
   } catch (err) {
+    if (err.message === 'No valid fields to update') {
+      return res.status(400).json({ error: err.message })
+    }
     next(err)
   }
 })
