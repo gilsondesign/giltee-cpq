@@ -237,6 +237,7 @@ Customer: ${intake_record.customer?.name || quote.customer_name || 'Customer'}
 Email: ${intake_record.customer?.email || quote.customer_email || ''}
 Products:
 ${productSummaries}
+Selected supplier: ${effectiveSupplier}
 QA status: ${qa_report.status}
 ${qa_report.failed?.length ? `QA flags: ${qa_report.failed.map(f => f.issue).join('; ')}` : ''}
 

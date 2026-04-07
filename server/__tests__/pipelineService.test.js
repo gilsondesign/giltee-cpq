@@ -122,12 +122,18 @@ describe('pipelineService.runQuotePipeline', () => {
   })
 
   it('uses selected_supplier for email and PDF when set', async () => {
-    // Quote has selected_supplier = REDWALL, but recommended = OSP
     queries.getQuote.mockResolvedValue({
       ...MOCK_QUOTE,
       selected_supplier: 'REDWALL',
       intake_record: MOCK_INTAKE_JSON,
     })
+
+    // intake_record is pre-set, so pipeline skips intake Claude call.
+    // Re-mock with only QA + email responses (not 3).
+    claudeService.callClaude.mockReset()
+    claudeService.callClaude
+      .mockResolvedValueOnce(JSON.stringify(MOCK_QA))
+      .mockResolvedValueOnce('SUBJECT: Quote — Kohn Law 60 Shirts\n---\nHere is your quote.\n\nLisa')
 
     await pipelineService.runQuotePipeline('GL-00001')
 
