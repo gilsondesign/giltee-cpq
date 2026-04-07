@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback } from 'react'
 import { Link, useParams } from 'react-router-dom'
 import NavBar from '../components/NavBar'
 import StatusBadge from '../components/StatusBadge'
-import QuoteForm, { buildEditFields, serializeSizeBreakdown } from '../components/QuoteForm'
+import QuoteForm, { buildEditFields, serializeProduct, normalizeIntakeRecord } from '../components/QuoteForm'
 
 function formatCurrency(n) {
   if (n == null) return '—'
@@ -98,7 +98,6 @@ export default function ViewQuote() {
     try {
       const f = editFields
 
-      // Build intake_record from form fields
       const intake_record = {
         customer: {
           name: f.customer_name || null,
@@ -108,37 +107,25 @@ export default function ViewQuote() {
           rush: f.rush || false,
           returning: f.returning || false,
         },
-        product: {
-          brand_style: f.brand_style || null,
-          quantity: f.quantity ? parseInt(f.quantity, 10) : null,
-          colors: f.colors ? f.colors.split(',').map(s => s.trim()).filter(Boolean) : [],
-          size_breakdown: serializeSizeBreakdown(f.sizes),
-          youth_sizes: f.youth_sizes || false,
-        },
-        decoration: {
-          method: f.decoration_method || null,
-          locations: f.locations.filter(l => l.name),
-          artwork_status: f.artwork_status || 'UNKNOWN',
-          special_inks: f.special_inks ? f.special_inks.split(',').map(s => s.trim()).filter(Boolean) : [],
-          stitch_count: f.stitch_count ? parseInt(f.stitch_count, 10) : null,
-        },
-        edge_cases: {
-          extended_sizes: f.extended_sizes || false,
-          dark_garment: f.dark_garment || false,
-          individual_names: f.individual_names || false,
-          shipping_destination: f.shipping_destination || null,
-        },
+        products: (f.products || []).map(serializeProduct),
+        notes: f.notes || null,
+        local_pickup: f.local_pickup || false,
+        shipping_address: f.shipping_address || null,
+        shipping_city: f.shipping_city || null,
+        shipping_state: f.shipping_state || null,
+        shipping_zip: f.shipping_zip || null,
         status: 'READY_FOR_PRICING',
         flags: [],
         missing_fields: [],
       }
 
+      const hasScreenPrint = (f.products || []).some(p => p.decoration_method === 'SCREEN_PRINT')
       const updates = {
         intake_record,
         customer_name: f.customer_name || null,
         customer_email: f.customer_email || null,
         project_name: f.project_name || null,
-        selected_supplier: f.decoration_method === 'SCREEN_PRINT' ? (f.selected_supplier || null) : null,
+        selected_supplier: hasScreenPrint ? (f.selected_supplier || null) : null,
       }
       if (['ready', 'error'].includes(quote.status)) updates.status = 'draft'
 
@@ -198,7 +185,7 @@ export default function ViewQuote() {
           <div className="bg-error-container text-on-error-container text-sm rounded p-4">
             {error || 'Quote not found'}
           </div>
-          <Link to="/" className="mt-4 inline-block text-sm text-primary hover:underline">← Back to ledger</Link>
+          <Link to="/" className="mt-4 inline-block text-sm text-primary hover:underline">← Back</Link>
         </div>
       </div>
     )
@@ -206,13 +193,23 @@ export default function ViewQuote() {
 
   const canRun = ['draft', 'error'].includes(quote.status)
   const canEdit = quote.status !== 'processing'
-  const intake = quote.intake_record || {}
-  const product = intake.product || {}
-  const decoration = intake.decoration || {}
-  const garment = quote.garment_data || {}
-  const osp = quote.pricing_osp || {}
-  const redwall = quote.pricing_redwall || {}
+  const intake = normalizeIntakeRecord(quote.intake_record)
+  const products = intake.products || []
+  // Normalize garment/pricing to arrays for backward compat
+  const garmentArr = Array.isArray(quote.garment_data) ? quote.garment_data : (quote.garment_data ? [quote.garment_data] : [])
+  const ospArr = Array.isArray(quote.pricing_osp) ? quote.pricing_osp : (quote.pricing_osp ? [quote.pricing_osp] : [])
+  const rwArr = Array.isArray(quote.pricing_redwall) ? quote.pricing_redwall : (quote.pricing_redwall ? [quote.pricing_redwall] : [])
+  // Legacy compat for modal display (single-product totals shown in existing cards)
+  const osp = ospArr[0] || {}
+  const redwall = rwArr[0] || {}
   const qa = quote.qa_report || {}
+  const activeSupplier = quote.selected_supplier || quote.recommended_supplier
+  function matchesSupplier(item) {
+    if (!item.supplier || item.supplier === 'BOTH') return true
+    return item.supplier === activeSupplier
+  }
+  const qaFailed = (qa.failed || []).filter(matchesSupplier)
+  const qaUnverified = (qa.unable_to_verify || []).filter(matchesSupplier)
   const logs = Array.isArray(quote.activity_log) ? quote.activity_log : []
 
   return (
@@ -222,7 +219,7 @@ export default function ViewQuote() {
 
         {/* Back link */}
         <Link to="/" className="text-xs text-on-surface-variant hover:text-on-surface mb-4 inline-block">
-          ← Back to ledger
+          ← Back
         </Link>
 
         {/* Header */}
@@ -245,18 +242,27 @@ export default function ViewQuote() {
                 {/* Output buttons — disabled until quote is ready */}
                 <div className="flex rounded border border-outline-variant overflow-hidden">
                   {[
-                    { key: 'qa', label: 'QA Report' },
+                    {
+                      key: 'qa',
+                      label: (() => {
+                        const issueCount = qaFailed.length + qaUnverified.length
+                        return issueCount > 0
+                          ? `Quote Quality · ${issueCount} issue${issueCount !== 1 ? 's' : ''}`
+                          : 'Quote Quality'
+                      })(),
+                    },
                     { key: 'email', label: 'Email Draft' },
                     { key: 'pdf', label: 'Quote PDF' },
                   ].map(({ key, label }) => {
                     const isReady = quote.status === 'ready'
+                    const hasIssues = key === 'qa' && (qaFailed.length + qaUnverified.length) > 0
                     return (
                       <button
                         key={key}
                         onClick={() => setPanel(key)}
                         disabled={!isReady}
                         title={!isReady ? 'Run the quote first' : undefined}
-                        className="text-xs font-medium px-3 py-2 border-r border-outline-variant last:border-r-0 text-on-surface-variant hover:bg-surface-container-low transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+                        className={`text-xs font-medium px-3 py-2 border-r border-outline-variant last:border-r-0 hover:bg-surface-container-low transition-colors disabled:opacity-40 disabled:cursor-not-allowed ${hasIssues ? 'text-error' : 'text-on-surface-variant'}`}
                       >
                         {label}
                       </button>
@@ -337,55 +343,86 @@ export default function ViewQuote() {
         )}
 
 
-        {/* Intake record */}
-        {intake.product && (
+        {/* Products */}
+        {!editing && products.length > 0 && (
           <>
-            <SectionLabel>Intake Record</SectionLabel>
-            <div className="bg-surface-container-low rounded p-4">
-              <InfoRow label="Garment" value={product.brand_style} />
-              <InfoRow label="Quantity" value={product.quantity} />
-              <InfoRow label="Colors" value={(product.colors || []).join(', ')} />
-              {product.size_breakdown && (
-                <div className="flex gap-4 py-2 border-b border-outline-variant/20">
-                  <span className="text-xs text-on-surface-variant w-40 shrink-0">Size breakdown</span>
-                  <div className="flex flex-wrap gap-x-4 gap-y-1">
-                    {product.size_breakdown.split(',').map(s => s.trim()).filter(Boolean).map((entry, i) => (
-                      <span key={i} className="text-sm text-on-surface font-mono">{entry}</span>
-                    ))}
+            <SectionLabel>Products</SectionLabel>
+            <div className="space-y-3">
+              {products.map((prod, pi) => {
+                const dec = prod.decoration || {}
+                const ec = prod.edge_cases || {}
+                const garment = garmentArr[pi] || {}
+                return (
+                  <div key={pi} className="bg-surface-container-low rounded p-4">
+                    <p className="text-xs font-bold text-primary uppercase tracking-wider mb-3">
+                      Product {pi + 1}{prod.brand_style ? ` — ${prod.brand_style}` : ''}
+                    </p>
+                    <InfoRow label="Garment" value={prod.brand_style} />
+                    <InfoRow label="Quantity" value={prod.quantity} />
+                    <InfoRow label="Colors" value={(prod.colors || []).join(', ')} />
+                    {prod.size_breakdown && (
+                      <div className="flex gap-4 py-2 border-b border-outline-variant/20">
+                        <span className="text-xs text-on-surface-variant w-40 shrink-0">Size breakdown</span>
+                        <div className="flex flex-wrap gap-x-4 gap-y-1">
+                          {prod.size_breakdown.split(',').map(s => s.trim()).filter(Boolean).map((entry, i) => (
+                            <span key={i} className="text-sm text-on-surface font-mono">{entry}</span>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                    <InfoRow label="Decoration" value={dec.method} />
+                    <InfoRow label="Locations" value={(dec.locations || []).map(l => `${l.name} (${l.color_count || l.colorCount || '?'}c)`).join(', ')} />
+                    {ec.dark_garment && <InfoRow label="Dark garment" value="Yes" />}
+                    {ec.individual_names && <InfoRow label="Individual names" value="Yes" />}
+                    {ec.extended_sizes && <InfoRow label="Extended sizes" value="Yes (2XL+)" />}
+                    {garment.style && (
+                      <div className="flex gap-4 py-2 border-b border-outline-variant/20 last:border-0">
+                        <span className="text-xs text-on-surface-variant w-40 shrink-0">Availability</span>
+                        {garment.available
+                          ? (
+                            <span className="flex items-center gap-1.5 text-sm font-medium text-[color:var(--color-secondary)]">
+                              <svg className="w-4 h-4 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                                <path strokeLinecap="round" strokeLinejoin="round" d="m4.5 12.75 6 6 9-13.5" />
+                              </svg>
+                              {garment.style}{garment.requestedColor ? ` in ${garment.requestedColor}` : ''}{garment.standardPrice != null ? ` — ${formatCurrency(garment.standardPrice)}/unit` : ''}
+                            </span>
+                          ) : (
+                            <span className="flex items-center gap-1.5 text-sm font-medium text-error">
+                              <svg className="w-4 h-4 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                                <path strokeLinecap="round" strokeLinejoin="round" d="M6 18 18 6M6 6l12 12" />
+                              </svg>
+                              {garment.style} — {garment.available === false ? 'not available' : 'not confirmed'}
+                            </span>
+                          )
+                        }
+                      </div>
+                    )}
                   </div>
-                </div>
-              )}
-              <InfoRow label="Decoration" value={decoration.method} />
-              <InfoRow label="Locations" value={(decoration.locations || []).map(l => `${l.name} (${l.color_count || l.colorCount || '?'}c)`).join(', ')} />
-              <InfoRow label="Dark garment" value={intake.edge_cases?.dark_garment ? 'Yes' : 'No'} />
-            </div>
-          </>
-        )}
-
-        {/* Garment */}
-        {garment.style && (
-          <>
-            <SectionLabel>Garment Availability</SectionLabel>
-            <div className="bg-surface-container-low rounded p-4">
-              <InfoRow label="Style" value={garment.resolvedStyle || garment.style} />
-              {garment.brandName && <InfoRow label="Brand" value={garment.brandName} />}
-              <InfoRow label="Color" value={garment.requestedColor} />
-              <InfoRow label="Available" value={garment.available ? '✓ In stock' : '✗ Not available'} />
-              <InfoRow label="Base price" value={formatCurrency(garment.standardPrice)} />
-              {intake.edge_cases?.extended_sizes && garment.extendedSkus?.length > 0 && (
-                <InfoRow
-                  label="Extended sizes"
-                  value={garment.extendedSkus.map(s => `${s.size} +${formatCurrency(s.price - garment.standardPrice)}`).join(', ')}
-                />
-              )}
+                )
+              })}
             </div>
           </>
         )}
 
         {/* Pricing */}
-        {osp.orderTotal != null && (
+        {!editing && (ospArr.length > 0 && ospArr.some(p => p?.orderTotal != null)) && (
           <>
             <SectionLabel>Pricing</SectionLabel>
+            {/* Per-product rows when multiple products */}
+            {ospArr.length > 1 && (
+              <div className="bg-surface-container-low rounded p-4 mb-3 space-y-2">
+                {ospArr.map((p, pi) => p && (
+                  <div key={pi} className="flex justify-between text-sm border-b border-outline-variant/20 pb-2 last:border-0 last:pb-0">
+                    <span className="text-on-surface-variant">Product {pi + 1} — {products[pi]?.brand_style || '—'}</span>
+                    <span className="font-medium text-on-surface">{formatCurrency(p.orderTotal)}</span>
+                  </div>
+                ))}
+                <div className="flex justify-between text-sm font-bold pt-1">
+                  <span className="text-on-surface">Combined total (OSP)</span>
+                  <span className="text-on-surface">{formatCurrency(ospArr.reduce((s, p) => s + (p?.orderTotal || 0), 0))}</span>
+                </div>
+              </div>
+            )}
             <div className="grid grid-cols-2 gap-3">
               {/* OSP */}
               <div className={`rounded p-4 border-2 ${quote.recommended_supplier === 'OSP' ? 'border-primary bg-surface-container-low' : 'border-transparent bg-surface-container-low'}`}>
@@ -400,14 +437,17 @@ export default function ViewQuote() {
                     )}
                   </div>
                 </div>
-                <p className="text-2xl font-bold text-on-surface">{formatCurrency(osp.orderTotal)}</p>
+                <p className="text-2xl font-bold text-on-surface">
+                  {formatCurrency(ospArr.reduce((s, p) => s + (p?.orderTotal || 0), 0))}
+                </p>
                 <p className="text-xs text-on-surface-variant mt-1">
-                  {formatCurrency(osp.perUnitTotal)}/unit
-                  {osp.setupFees?.screenSetup > 0 ? ` + ${formatCurrency(osp.setupFees.screenSetup)} setup` : ' (setup waived)'}
+                  {ospArr.length === 1
+                    ? `${formatCurrency(osp.perUnitTotal)}/unit${osp.setupFees?.screenSetup > 0 ? ` + ${formatCurrency(osp.setupFees.screenSetup)} setup` : ' (setup waived)'}`
+                    : `${ospArr.length} products`}
                 </p>
               </div>
               {/* Redwall */}
-              {redwall.orderTotal != null && (
+              {rwArr.some(p => p?.orderTotal != null) && (
                 <div className={`rounded p-4 border-2 ${quote.recommended_supplier === 'REDWALL' ? 'border-primary bg-surface-container-low' : 'border-transparent bg-surface-container-low'}`}>
                   <div className="flex items-center justify-between mb-2">
                     <p className="text-xs font-bold text-on-surface-variant uppercase">Redwall</p>
@@ -420,15 +460,17 @@ export default function ViewQuote() {
                       )}
                     </div>
                   </div>
-                  <p className="text-2xl font-bold text-on-surface">{formatCurrency(redwall.orderTotal)}</p>
+                  <p className="text-2xl font-bold text-on-surface">
+                    {formatCurrency(rwArr.reduce((s, p) => s + (p?.orderTotal || 0), 0))}
+                  </p>
                   <p className="text-xs text-on-surface-variant mt-1">
-                    {formatCurrency(redwall.perUnitTotal)}/unit
-                    {redwall.setupFees?.screenSetup > 0 ? ` + ${formatCurrency(redwall.setupFees.screenSetup)} setup` : ' (setup waived)'}
+                    {rwArr.length === 1
+                      ? `${formatCurrency(redwall.perUnitTotal)}/unit${redwall.setupFees?.screenSetup > 0 ? ` + ${formatCurrency(redwall.setupFees.screenSetup)} setup` : ' (setup waived)'}`
+                      : `${rwArr.filter(p => p).length} products`}
                   </p>
                 </div>
               )}
             </div>
-            {/* Pricing flags */}
             {osp.flags?.length > 0 && (
               <div className="mt-2 space-y-1">
                 {osp.flags.map((f, i) => (
@@ -452,7 +494,7 @@ export default function ViewQuote() {
               {/* Modal header */}
               <div className="flex items-center justify-between px-5 py-4 border-b border-outline-variant/20 bg-surface-container shrink-0">
                 <p className="text-sm font-semibold text-on-surface">
-                  {panel === 'qa' ? 'QA Report' : panel === 'email' ? 'Email Draft' : 'Quote PDF'}
+                  {panel === 'qa' ? 'Quote Quality' : panel === 'email' ? 'Email Draft' : 'Quote PDF'}
                 </p>
                 <button onClick={() => { setPanel(null); setDraftResult(null) }} className="text-on-surface-variant hover:text-on-surface transition-colors">
                   <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
@@ -464,28 +506,84 @@ export default function ViewQuote() {
               {/* Modal body */}
               <div className="overflow-y-auto flex-1">
                 {panel === 'qa' && (
-                  <div className="p-5">
-                    <div className="flex items-center gap-2 mb-3">
-                      <span className={`text-sm font-bold ${qa.status === 'APPROVED' ? 'text-secondary' : qa.status === 'BLOCKED' ? 'text-error' : 'text-on-surface'}`}>
-                        {qa.status}
-                      </span>
-                      {qa.passed_count != null && (
-                        <span className="text-xs text-on-surface-variant">
-                          {qa.passed_count}/{qa.total_checks || qa.total_count || '?'} checks passed
-                        </span>
+                  <div className="p-5 space-y-5">
+                    {/* Status banner */}
+                    <div className={`flex items-center gap-3 rounded-lg px-4 py-3 ${
+                      qa.status === 'APPROVED' ? 'bg-[color:var(--color-secondary-container,#d2f4d3)] text-[color:var(--color-on-secondary-container,#1a3a1b)]'
+                      : qa.status === 'BLOCKED' ? 'bg-error-container text-on-error-container'
+                      : 'bg-surface-container text-on-surface'
+                    }`}>
+                      {qa.status === 'APPROVED' ? (
+                        <svg className="w-5 h-5 shrink-0 text-[color:var(--color-secondary)]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                          <path strokeLinecap="round" strokeLinejoin="round" d="m4.5 12.75 6 6 9-13.5" />
+                        </svg>
+                      ) : qa.status === 'BLOCKED' ? (
+                        <svg className="w-5 h-5 shrink-0 text-error" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                          <path strokeLinecap="round" strokeLinejoin="round" d="M18.364 18.364A9 9 0 0 0 5.636 5.636m12.728 12.728A9 9 0 0 1 5.636 5.636m12.728 12.728L5.636 5.636" />
+                        </svg>
+                      ) : (
+                        <svg className="w-5 h-5 shrink-0 text-on-surface-variant" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                          <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126ZM12 15.75h.007v.008H12v-.008Z" />
+                        </svg>
                       )}
-                    </div>
-                    {qa.failed?.length > 0 && (
-                      <div className="space-y-1 mb-3">
-                        {qa.failed.map((f, i) => (
-                          <p key={i} className="text-xs text-on-error-container bg-error-container rounded px-3 py-1.5">
-                            <span className="font-medium">{f.check}:</span> {f.issue}
+                      <div>
+                        <p className="text-sm font-bold">
+                          {qa.status === 'APPROVED' ? 'Approved' : qa.status === 'BLOCKED' ? 'Blocked' : 'Needs Fixes'}
+                        </p>
+                        {qa.passed_count != null && (
+                          <p className="text-xs opacity-70 mt-0.5">
+                            {qa.passed_count} of {qa.total_checks || qa.total_count || '?'} checks passed
                           </p>
-                        ))}
+                        )}
+                      </div>
+                    </div>
+
+                    {/* Failed checks */}
+                    {qaFailed.length > 0 && (
+                      <div>
+                        <p className="text-xs font-semibold text-error uppercase tracking-wider mb-2">Issues</p>
+                        <div className="space-y-2">
+                          {qaFailed.map((f, i) => (
+                            <div key={i} className="flex gap-3 bg-error-container/40 border border-error/20 rounded-lg px-3 py-2.5">
+                              <svg className="w-4 h-4 text-error shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                                <path strokeLinecap="round" strokeLinejoin="round" d="M6 18 18 6M6 6l12 12" />
+                              </svg>
+                              <div>
+                                <p className="text-xs font-semibold text-error">{f.check}</p>
+                                <p className="text-xs text-on-surface mt-0.5">{f.issue}</p>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
                       </div>
                     )}
+
+                    {/* Unable to verify */}
+                    {qaUnverified.length > 0 && (
+                      <div>
+                        <p className="text-xs font-semibold text-on-surface-variant uppercase tracking-wider mb-2">Could Not Verify</p>
+                        <div className="space-y-2">
+                          {qaUnverified.map((u, i) => (
+                            <div key={i} className="flex gap-3 bg-surface-container border border-outline-variant/30 rounded-lg px-3 py-2.5">
+                              <svg className="w-4 h-4 text-on-surface-variant shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                                <path strokeLinecap="round" strokeLinejoin="round" d="M9.879 7.519c1.171-1.025 3.071-1.025 4.242 0 1.172 1.025 1.172 2.687 0 3.712-.203.179-.43.326-.67.442-.745.361-1.45.999-1.45 1.827v.75M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Zm-9 5.25h.008v.008H12v-.008Z" />
+                              </svg>
+                              <div>
+                                <p className="text-xs font-semibold text-on-surface">{u.check}</p>
+                                <p className="text-xs text-on-surface-variant mt-0.5">{u.reason}</p>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Reviewer notes */}
                     {qa.reviewer_notes && (
-                      <p className="text-xs text-on-surface-variant italic">{qa.reviewer_notes}</p>
+                      <div className="border-t border-outline-variant/20 pt-4">
+                        <p className="text-xs font-semibold text-on-surface-variant uppercase tracking-wider mb-1.5">Notes</p>
+                        <p className="text-sm text-on-surface leading-relaxed">{qa.reviewer_notes}</p>
+                      </div>
                     )}
                   </div>
                 )}

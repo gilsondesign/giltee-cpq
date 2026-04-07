@@ -14,9 +14,9 @@ function renderWithAuth(ui, user) {
 }
 
 describe('NavBar', () => {
-  it('renders the Giltee wordmark', () => {
+  it('renders the Giltee logo', () => {
     renderWithAuth(<NavBar />, { name: 'Lisa', role: 'member' })
-    expect(screen.getByText('Giltee')).toBeInTheDocument()
+    expect(screen.getByAltText('Giltee')).toBeInTheDocument()
   })
 
   it('renders main nav links', () => {

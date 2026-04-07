@@ -3,19 +3,15 @@ import { Link, useSearchParams } from 'react-router-dom'
 import NavBar from '../components/NavBar'
 import StatusBadge from '../components/StatusBadge'
 
-const STATUSES = ['all', 'draft', 'processing', 'ready', 'error', 'sent']
-
 export default function Ledger() {
   const [quotes, setQuotes] = useState([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
-  const [activeStatus, setActiveStatus] = useState('all')
   const [searchParams] = useSearchParams()
   const searchQuery = searchParams.get('search') || ''
 
   useEffect(() => {
     const params = new URLSearchParams()
-    if (activeStatus !== 'all') params.set('status', activeStatus)
     if (searchQuery) params.set('search', searchQuery)
     const qs = params.toString() ? `?${params.toString()}` : ''
     fetch(`/api/quotes${qs}`, { credentials: 'include' })
@@ -25,7 +21,7 @@ export default function Ledger() {
       })
       .then(data => { setQuotes(data); setLoading(false) })
       .catch(err => { setError(err.message); setLoading(false) })
-  }, [activeStatus, searchQuery])
+  }, [searchQuery])
 
   return (
     <div className="min-h-screen bg-surface">
@@ -35,7 +31,7 @@ export default function Ledger() {
         {/* Header */}
         <div className="flex items-center justify-between mb-6">
           <div>
-            <h1 className="text-2xl font-bold text-on-surface">Quote Ledger</h1>
+            <h1 className="text-2xl font-bold text-on-surface">Quotes</h1>
             <p className="text-on-surface-variant text-sm mt-0.5">
               {loading ? 'Loading…' : `${quotes.length} quote${quotes.length !== 1 ? 's' : ''}`}
             </p>
@@ -51,23 +47,6 @@ export default function Ledger() {
           >
             New Quote
           </Link>
-        </div>
-
-        {/* Status filter tabs */}
-        <div className="flex gap-1 mb-4 border-b border-outline-variant/30">
-          {STATUSES.map(s => (
-            <button
-              key={s}
-              onClick={() => setActiveStatus(s)}
-              className={`px-3 py-2 text-xs font-medium capitalize transition-colors border-b-2 -mb-px ${
-                activeStatus === s
-                  ? 'border-primary text-primary'
-                  : 'border-transparent text-on-surface-variant hover:text-on-surface'
-              }`}
-            >
-              {s}
-            </button>
-          ))}
         </div>
 
         {/* Error */}

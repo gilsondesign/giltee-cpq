@@ -8,7 +8,7 @@ export default function AcceptInvite() {
   return (
     <div className="min-h-screen bg-surface-container-low flex items-center justify-center">
       <div className="bg-surface rounded p-10 w-full max-w-sm text-center">
-        <p className="text-primary font-bold text-3xl tracking-tight mb-1">Giltee</p>
+        <img src="/giltee-logo.svg" alt="Giltee" className="h-10 w-auto mx-auto mb-3" />
         <p className="text-on-surface-variant text-sm mb-2">The Ledger — Quote Management</p>
 
         <div className="w-12 h-12 bg-secondary-fixed/20 rounded-full flex items-center justify-center mx-auto my-6">

@@ -21,7 +21,7 @@ function AuthGuard({ children, adminOnly = false }) {
   }
 
   if (!user) {
-    return <Navigate to="/auth/login" state={{ from: location }} replace />
+    return <Navigate to="/login" state={{ from: location }} replace />
   }
 
   if (adminOnly && user.role !== 'admin') {
@@ -38,8 +38,8 @@ export default function App() {
     <AuthProvider>
       <Routes>
         {/* Public routes */}
-        <Route path="/auth/login" element={<Login />} />
-        <Route path="/auth/accept" element={<AcceptInvite />} />
+        <Route path="/login" element={<Login />} />
+        <Route path="/accept" element={<AcceptInvite />} />
 
         {/* Protected routes */}
         <Route path="/" element={<AuthGuard><Ledger /></AuthGuard>} />

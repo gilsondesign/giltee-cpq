@@ -13,7 +13,7 @@ describe('App routing', () => {
   it('redirects unauthenticated users to /auth/login', async () => {
     render(<MemoryRouter initialEntries={['/']}><App /></MemoryRouter>)
     // AuthGuard shows loading first, then redirects to /auth/login
-    // The Login page renders "Giltee" wordmark
-    await screen.findByText('Giltee')
+    // The Login page renders the Giltee logo image
+    await screen.findByAltText('Giltee')
   })
 })

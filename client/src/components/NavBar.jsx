@@ -15,17 +15,16 @@ export default function NavBar() {
 
   return (
     <nav className="bg-surface border-b border-outline-variant/30 px-6 py-0 flex items-center justify-between h-14">
-      {/* Left: Wordmark */}
-      <NavLink to="/" className="text-primary font-bold text-xl tracking-tight">
-        Giltee
+      {/* Left: Logo */}
+      <NavLink to="/" className="flex items-center">
+        <img src="/giltee-logo.svg" alt="Giltee" className="h-7 w-auto" />
       </NavLink>
 
       {/* Center: Nav links */}
       <div className="flex items-center gap-6">
         {[
-          { to: '/', label: 'Dashboard' },
-          { to: '/quotes/new', label: 'New Quote' },
-          { to: '/clients', label: 'Clients' },
+          { to: '/', label: 'Quotes' },
+          { to: '/clients', label: 'Customers' },
         ].map(({ to, label }) => (
           <NavLink
             key={to}
@@ -51,7 +50,7 @@ export default function NavBar() {
             type="text"
             value={searchQuery}
             onChange={e => setSearchQuery(e.target.value)}
-            placeholder="Search ledger..."
+            placeholder="Search..."
             className="text-sm bg-surface-container-low rounded px-3 py-1.5 text-on-surface placeholder:text-on-surface-variant focus:outline-none focus:bg-surface-container-lowest w-44"
           />
         </form>

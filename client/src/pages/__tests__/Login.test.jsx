@@ -4,9 +4,9 @@ import Login from '../Login'
 import AcceptInvite from '../AcceptInvite'
 
 describe('Login', () => {
-  it('renders the Giltee wordmark and sign in button', () => {
+  it('renders the Giltee logo and sign in button', () => {
     render(<MemoryRouter><Login /></MemoryRouter>)
-    expect(screen.getByText('Giltee')).toBeInTheDocument()
+    expect(screen.getByAltText('Giltee')).toBeInTheDocument()
     expect(screen.getByRole('link', { name: /sign in with google/i })).toBeInTheDocument()
   })
 

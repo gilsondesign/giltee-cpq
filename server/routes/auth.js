@@ -13,7 +13,7 @@ router.get('/google', passport.authenticate('google', {
 }))
 
 router.get('/google/callback',
-  passport.authenticate('google', { failureRedirect: '/auth/login?error=auth_failed' }),
+  passport.authenticate('google', { failureRedirect: '/login?error=auth_failed' }),
   (req, res) => {
     res.redirect('/')
   }
@@ -52,8 +52,8 @@ router.post('/invite', requireAuth, requireAdmin, async (req, res, next) => {
     await queries.createInvitation({ email, token, invitedBy: req.user.id })
 
     const appUrl = process.env.APP_URL || 'http://localhost:5173'
-    const inviteUrl = `${appUrl}/auth/accept?token=${token}`
-    // Note: /auth/accept is handled by the React SPA (client-side router).
+    const inviteUrl = `${appUrl}/accept?token=${token}`
+    // Note: /accept is handled by the React SPA (client-side router).
     // The token in the URL is for UI display only — actual access control happens
     // in the OAuth callback (email matched against pending invitations in the DB).
 
