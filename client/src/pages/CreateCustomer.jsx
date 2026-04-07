@@ -98,7 +98,7 @@ export default function CreateCustomer() {
           <Link to="/customers" className="text-xs text-on-surface-variant hover:text-on-surface mb-3 inline-block">
             ← Back
           </Link>
-          <h1 className="text-2xl font-bold text-on-surface">New Customer</h1>
+          <h1 className="text-2xl font-bold text-on-surface">New Account</h1>
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-5">
@@ -176,24 +176,7 @@ export default function CreateCustomer() {
             </div>
           </Section>
 
-          <Section title="Order History">
-            <div className="flex flex-col gap-1">
-              <span className="text-xs text-on-surface-variant">Reorder Likelihood</span>
-              <select
-                value={f.reorder_likelihood}
-                onChange={e => set('reorder_likelihood', e.target.value)}
-                className="text-sm bg-surface border border-outline-variant rounded px-3 py-1.5 text-on-surface focus:outline-none focus:ring-1 focus:ring-primary"
-              >
-                <option value="">—</option>
-                <option value="High">High</option>
-                <option value="Medium">Medium</option>
-                <option value="Low">Low</option>
-              </select>
-            </div>
-            <Field label="Next Expected Order" value={f.next_expected_order} onChange={v => set('next_expected_order', v)} placeholder="Summer 2026" />
-          </Section>
-
-          <Section title="Account Notes">
+<Section title="Account Notes">
             <div className="col-span-2">
               <Textarea label="" value={f.account_notes} onChange={v => set('account_notes', v)} placeholder="Any notes about this customer…" rows={4} />
             </div>
@@ -210,7 +193,7 @@ export default function CreateCustomer() {
               disabled={submitting}
               className="bg-primary text-on-primary text-sm font-medium px-6 py-2.5 rounded hover:bg-primary-container transition-colors disabled:opacity-60"
             >
-              {submitting ? 'Creating…' : 'Create Customer'}
+              {submitting ? 'Creating…' : 'Create Account'}
             </button>
           </div>
         </form>

@@ -53,16 +53,16 @@ export default function Customers() {
         {/* Header */}
         <div className="flex items-center justify-between mb-6">
           <div>
-            <h1 className="text-2xl font-bold text-on-surface">Customers</h1>
+            <h1 className="text-2xl font-bold text-on-surface">Accounts</h1>
             <p className="text-on-surface-variant text-sm mt-0.5">
-              {loading ? 'Loading…' : `${customers.length} customer${customers.length !== 1 ? 's' : ''}`}
+              {loading ? 'Loading…' : `${customers.length} account${customers.length !== 1 ? 's' : ''}`}
             </p>
           </div>
           <Link
             to="/customers/new"
             className="bg-primary text-on-primary text-sm font-medium px-4 py-2 rounded hover:bg-primary-container transition-colors"
           >
-            + New Customer
+            + New Account
           </Link>
         </div>
 
@@ -72,7 +72,7 @@ export default function Customers() {
             type="text"
             value={search}
             onChange={e => setSearch(e.target.value)}
-            placeholder="Search by company or acct #…"
+            placeholder="Search by account or acct #…"
             className="text-sm bg-surface-container-low rounded px-3 py-1.5 text-on-surface placeholder:text-on-surface-variant focus:outline-none w-64"
           />
           <select
@@ -100,9 +100,9 @@ export default function Customers() {
 
         {!loading && !error && customers.length === 0 && (
           <div className="text-center py-16">
-            <p className="text-on-surface-variant text-sm mb-4">No customers yet.</p>
+            <p className="text-on-surface-variant text-sm mb-4">No accounts yet.</p>
             <Link to="/customers/new" className="text-sm text-primary font-medium hover:underline">
-              Add your first customer →
+              Add your first account →
             </Link>
           </div>
         )}
@@ -112,7 +112,7 @@ export default function Customers() {
             <table className="w-full text-sm">
               <thead>
                 <tr className="border-b border-outline-variant/30">
-                  {['Acct #', 'Company', 'Contact', 'Email', 'Orders', 'Last Order', 'Status'].map(col => (
+                  {['Acct #', 'Account', 'Contact', 'Email', 'Orders', 'Last Order', 'Status'].map(col => (
                     <th key={col} className="text-left px-4 py-3 text-xs font-bold tracking-wider text-on-surface-variant uppercase">
                       {col}
                     </th>

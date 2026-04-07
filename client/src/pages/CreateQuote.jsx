@@ -120,7 +120,7 @@ export default function CreateQuote() {
         {/* Header */}
         <div className="mb-6">
           <Link to="/" className="text-xs text-on-surface-variant hover:text-on-surface mb-3 inline-block">
-            ← Back to ledger
+            ← Back
           </Link>
           <h1 className="text-2xl font-bold text-on-surface">New Quote</h1>
         </div>

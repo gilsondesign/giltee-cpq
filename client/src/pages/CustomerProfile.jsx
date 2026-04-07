@@ -153,20 +153,12 @@ export default function CustomerProfile() {
                 </button>
               </>
             ) : (
-              <>
-                <button
-                  onClick={startEdit}
-                  className="text-xs border border-outline-variant bg-surface rounded px-3 py-1.5 text-on-surface-variant hover:text-on-surface"
-                >
-                  Edit
-                </button>
-                <Link
-                  to={`/quotes/new?customer=${customer.id}`}
-                  className="text-xs bg-primary text-on-primary rounded px-3 py-1.5 hover:bg-primary-container transition-colors"
-                >
-                  + New Quote
-                </Link>
-              </>
+              <button
+                onClick={startEdit}
+                className="text-xs border border-outline-variant bg-surface rounded px-3 py-1.5 text-on-surface-variant hover:text-on-surface"
+              >
+                Edit
+              </button>
             )}
           </div>
         </div>
@@ -189,7 +181,7 @@ export default function CustomerProfile() {
                 <h1 className="text-2xl font-bold text-on-surface">{f.company_name}</h1>
               )}
               <p className="text-xs text-on-surface-variant mt-1">
-                Acct #{f.account_id} · {f.contact_email || '—'} · {f.phone || '—'}
+                {(() => { const p = (f.contacts || []).find(c => c.primary) || (f.contacts || [])[0]; return `Acct #${f.account_id}${p?.email ? ' · ' + p.email : ''}${p?.phone ? ' · ' + p.phone : ''}` })()}
               </p>
             </div>
             {editing ? (
@@ -224,85 +216,89 @@ export default function CustomerProfile() {
           {/* Left column */}
           <div className="space-y-6">
 
-            {/* Primary Contact */}
+            {/* Contact Information */}
             <div className="bg-surface-container-low rounded border border-outline-variant/40 p-5">
-              <SectionHeader title="Primary Contact" />
+              <SectionHeader title="Contact Information" />
               {editing ? (
-                <div className="grid grid-cols-2 gap-3">
-                  {[
-                    ['contact_name', 'Contact Name', 'text'],
-                    ['contact_email', 'Email', 'email'],
-                    ['phone', 'Phone', 'text'],
-                    ['billing_address', 'Billing Address', 'text'],
-                    ['shipping_address', 'Shipping Address', 'text'],
-                  ].map(([key, label, type]) => (
-                    <div key={key} className={`flex flex-col gap-1 ${key.includes('address') ? 'col-span-2' : ''}`}>
-                      <span className="text-xs text-on-surface-variant">{label}</span>
-                      <input
-                        type={type}
-                        value={f[key] || ''}
-                        onChange={e => set(key, e.target.value)}
-                        className="text-sm bg-surface border border-outline-variant rounded px-2 py-1.5 text-on-surface focus:outline-none focus:ring-1 focus:ring-primary"
-                      />
+                <div className="space-y-3">
+                  {(f.contacts || []).map((contact, i) => (
+                    <div key={i} className="border border-outline-variant/40 rounded p-3 space-y-2">
+                      <div className="flex items-center justify-between">
+                        {contact.primary
+                          ? <span className="text-xs font-semibold text-primary">Primary</span>
+                          : <button type="button" onClick={() => set('contacts', f.contacts.map((c, j) => ({ ...c, primary: j === i })))} className="text-xs text-on-surface-variant hover:text-primary">Make Primary</button>
+                        }
+                        {f.contacts.length > 1 && !contact.primary && (
+                          <button type="button" onClick={() => set('contacts', f.contacts.filter((_, j) => j !== i))} className="text-xs text-error-container bg-error-container/20 hover:bg-error-container/40 px-2 py-0.5 rounded">Remove</button>
+                        )}
+                      </div>
+                      {[['name', 'Name', 'text'], ['email', 'Email', 'email'], ['phone', 'Phone', 'text']].map(([key, label, type]) => (
+                        <input
+                          key={key}
+                          type={type}
+                          placeholder={label}
+                          value={contact[key] || ''}
+                          onChange={e => set('contacts', f.contacts.map((c, j) => j === i ? { ...c, [key]: e.target.value } : c))}
+                          className="w-full text-sm bg-surface border border-outline-variant rounded px-2 py-1.5 text-on-surface focus:outline-none focus:ring-1 focus:ring-primary"
+                        />
+                      ))}
                     </div>
                   ))}
-                  <div className="flex flex-col gap-1">
-                    <span className="text-xs text-on-surface-variant">Preferred Contact</span>
-                    <select value={f.preferred_contact || ''} onChange={e => set('preferred_contact', e.target.value)}
-                      className="text-sm bg-surface border border-outline-variant rounded px-2 py-1.5 text-on-surface focus:outline-none">
-                      <option value="">—</option>
-                      <option>Email</option><option>Phone</option><option>Text</option>
-                    </select>
+                  <button
+                    type="button"
+                    onClick={() => set('contacts', [...(f.contacts || []), { name: '', email: '', phone: '', primary: !(f.contacts?.length > 0) }])}
+                    className="text-xs text-primary hover:underline"
+                  >
+                    + Add Contact
+                  </button>
+                  <div className="border-t border-outline-variant/30 pt-3 mt-1 grid grid-cols-2 gap-3">
+                    {[['billing_address', 'Billing Address', 'text'], ['shipping_address', 'Shipping Address', 'text']].map(([key, label, type]) => (
+                      <div key={key} className="flex flex-col gap-1 col-span-2">
+                        <span className="text-xs text-on-surface-variant">{label}</span>
+                        <input type={type} value={f[key] || ''} onChange={e => set(key, e.target.value)}
+                          className="text-sm bg-surface border border-outline-variant rounded px-2 py-1.5 text-on-surface focus:outline-none focus:ring-1 focus:ring-primary" />
+                      </div>
+                    ))}
                   </div>
                 </div>
               ) : (
-                <div className="grid grid-cols-[110px_1fr] gap-y-2 text-xs">
-                  <InfoRow label="Contact" value={f.contact_name} />
-                  <InfoRow label="Email" value={f.contact_email} />
-                  <InfoRow label="Phone" value={f.phone} />
-                  <InfoRow label="Pref. Contact" value={f.preferred_contact} />
-                  <InfoRow label="Billing" value={f.billing_address} />
-                  <InfoRow label="Shipping" value={f.shipping_address} />
+                <div className="space-y-3">
+                  {(f.contacts || []).length > 0 ? [...(f.contacts || [])].sort((a, b) => b.primary - a.primary).map((contact, i) => (
+                    <div key={i} className="text-xs space-y-0.5">
+                      <div className="flex items-center gap-2">
+                        <span className="font-semibold text-on-surface">{contact.name || '—'}</span>
+                        {contact.primary && (f.contacts || []).length > 1 && (
+                          <span className="text-xs bg-primary/10 text-primary px-1.5 py-0.5 rounded-full">Primary</span>
+                        )}
+                      </div>
+                      {contact.email && <div className="text-on-surface-variant">{contact.email}</div>}
+                      {contact.phone && <div className="text-on-surface-variant">{contact.phone}</div>}
+                    </div>
+                  )) : <span className="text-xs text-on-surface-variant italic">No contacts</span>}
+                  {(f.billing_address || f.shipping_address) && (
+                    <div className="border-t border-outline-variant/30 pt-3 grid grid-cols-[110px_1fr] gap-y-2 text-xs">
+                      {f.billing_address && <InfoRow label="Billing" value={f.billing_address} />}
+                      {f.shipping_address && <InfoRow label="Shipping" value={f.shipping_address} />}
+                    </div>
+                  )}
                 </div>
               )}
             </div>
 
-            {/* Decoration Preferences */}
+            {/* Account Notes */}
             <div className="bg-surface-container-low rounded border border-outline-variant/40 p-5">
-              <SectionHeader title="Decoration Preferences" />
+              <SectionHeader title="Account Notes" />
               {editing ? (
-                <div className="grid grid-cols-2 gap-3">
-                  {[
-                    ['decoration_types', 'Dec. Types'],
-                    ['garment_vendor_pref', 'Vendor Pref'],
-                    ['pantone_colors', 'Pantone'],
-                    ['ink_colors', 'Ink Colors'],
-                    ['print_locations', 'Print Locations'],
-                    ['garment_style_prefs', 'Garment Prefs'],
-                    ['sizing_notes', 'Sizing Notes'],
-                    ['logo_file_location', 'Logo Location'],
-                  ].map(([key, label]) => (
-                    <div key={key} className="flex flex-col gap-1">
-                      <span className="text-xs text-on-surface-variant">{label}</span>
-                      <input
-                        value={f[key] || ''}
-                        onChange={e => set(key, e.target.value)}
-                        className="text-sm bg-surface border border-outline-variant rounded px-2 py-1.5 text-on-surface focus:outline-none focus:ring-1 focus:ring-primary"
-                      />
-                    </div>
-                  ))}
-                </div>
+                <textarea
+                  value={f.account_notes || ''}
+                  onChange={e => set('account_notes', e.target.value)}
+                  rows={4}
+                  className="w-full text-sm bg-surface border border-outline-variant rounded px-3 py-2 text-on-surface focus:outline-none focus:ring-1 focus:ring-primary resize-y"
+                />
               ) : (
-                <div className="grid grid-cols-[110px_1fr] gap-y-2 text-xs">
-                  <InfoRow label="Dec. Types" value={f.decoration_types} />
-                  <InfoRow label="Vendor Pref" value={f.garment_vendor_pref} />
-                  <InfoRow label="Pantone" value={f.pantone_colors} />
-                  <InfoRow label="Ink Colors" value={f.ink_colors} />
-                  <InfoRow label="Print Locs" value={f.print_locations} />
-                  <InfoRow label="Garment Prefs" value={f.garment_style_prefs} />
-                  <InfoRow label="Sizing Notes" value={f.sizing_notes} />
-                  <InfoRow label="Logo Location" value={f.logo_file_location} />
-                </div>
+                <p className="text-xs text-on-surface leading-relaxed">
+                  {f.account_notes || <span className="text-on-surface-variant italic">No notes</span>}
+                </p>
               )}
             </div>
 
@@ -342,45 +338,40 @@ export default function CustomerProfile() {
               )}
             </div>
 
-            {/* Recent Quotes */}
-            {customer.recentQuotes?.length > 0 && (
-              <div className="bg-surface-container-low rounded border border-outline-variant/40 p-5">
-                <SectionHeader title="Recent Quotes" />
-                <div className="flex flex-col gap-2">
-                  {customer.recentQuotes.map(q => (
+            {/* Quotes */}
+            <div className="bg-surface-container-low rounded border border-outline-variant/40 p-5">
+              <div className="flex items-center justify-between mb-3">
+                <SectionHeader title="Quotes" />
+                <Link
+                  to={`/quotes/new?customer=${customer.id}`}
+                  className="text-xs bg-primary text-on-primary rounded px-3 py-1.5 hover:bg-primary-container transition-colors"
+                >
+                  + New Quote
+                </Link>
+              </div>
+              {customer.quotes?.length > 0 ? (
+                <div className="flex flex-col gap-1">
+                  <div className="grid grid-cols-[100px_1fr_90px] gap-2 px-3 pb-1 text-xs font-semibold text-on-surface-variant uppercase tracking-wide">
+                    <span>Quote #</span>
+                    <span>Project</span>
+                    <span>Status</span>
+                  </div>
+                  {customer.quotes.map(q => (
                     <Link
                       key={q.id}
                       to={`/quotes/${q.id}`}
-                      className="flex items-center justify-between text-xs px-3 py-2 bg-surface rounded hover:bg-surface-container transition-colors"
+                      className="grid grid-cols-[100px_1fr_90px] gap-2 items-center text-xs px-3 py-2 bg-surface rounded hover:bg-surface-container transition-colors"
                     >
                       <span className="font-semibold text-primary">{q.id}</span>
-                      <span className="text-on-surface flex-1 mx-3 truncate">{q.project_name || '—'}</span>
-                      <span className="text-on-surface-variant">
-                        {new Date(q.created_at).toLocaleDateString('en-US', { month: 'short', year: 'numeric' })}
-                      </span>
-                      <span className={`ml-2 text-xs font-semibold px-2 py-0.5 rounded-full ${QUOTE_STATUS_COLORS[q.status] || QUOTE_STATUS_COLORS.draft}`}>
+                      <span className="text-on-surface truncate">{q.project_name || '—'}</span>
+                      <span className={`text-xs font-semibold px-2 py-0.5 rounded-full w-fit ${QUOTE_STATUS_COLORS[q.status] || QUOTE_STATUS_COLORS.draft}`}>
                         {q.status}
                       </span>
                     </Link>
                   ))}
                 </div>
-              </div>
-            )}
-
-            {/* Account Notes */}
-            <div className="bg-surface-container-low rounded border border-outline-variant/40 p-5">
-              <SectionHeader title="Account Notes" />
-              {editing ? (
-                <textarea
-                  value={f.account_notes || ''}
-                  onChange={e => set('account_notes', e.target.value)}
-                  rows={4}
-                  className="w-full text-sm bg-surface border border-outline-variant rounded px-3 py-2 text-on-surface focus:outline-none focus:ring-1 focus:ring-primary resize-y"
-                />
               ) : (
-                <p className="text-xs text-on-surface leading-relaxed">
-                  {f.account_notes || <span className="text-on-surface-variant italic">No notes</span>}
-                </p>
+                <p className="text-xs text-on-surface-variant italic">No quotes yet.</p>
               )}
             </div>
 

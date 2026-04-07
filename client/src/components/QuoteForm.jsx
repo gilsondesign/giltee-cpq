@@ -376,7 +376,7 @@ export default function QuoteForm({ fields, setFields }) {
 
       {/* Customer */}
       <div>
-        <p className="text-xs font-semibold text-primary uppercase tracking-wider mb-3">Customer</p>
+        <p className="text-xs font-semibold text-primary uppercase tracking-wider mb-3">Account</p>
         <CustomerPicker
           linkedCustomerId={fields.customer_id}
           linkedCustomer={fields.linked_customer}

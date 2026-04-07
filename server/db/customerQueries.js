@@ -6,7 +6,7 @@ const UPDATABLE_CUSTOMER_COLUMNS = new Set([
   'billing_address', 'shipping_address', 'decoration_types', 'garment_vendor_pref',
   'pantone_colors', 'ink_colors', 'print_locations', 'logo_file_location',
   'sizing_notes', 'garment_style_prefs', 'reorder_likelihood', 'next_expected_order',
-  'account_notes', 'account_id'
+  'account_notes', 'account_id', 'contacts'
 ])
 
 async function createCustomer(data) {
@@ -43,9 +43,25 @@ async function createCustomer(data) {
   return rows[0]
 }
 
+function synthesizeContacts(customer) {
+  if (customer.contacts) return customer
+  if (customer.contact_name || customer.contact_email || customer.phone) {
+    customer.contacts = [{
+      name: customer.contact_name || '',
+      email: customer.contact_email || '',
+      phone: customer.phone || '',
+      primary: true,
+    }]
+  } else {
+    customer.contacts = []
+  }
+  return customer
+}
+
 async function getCustomer(id) {
   const { rows } = await pool.query('SELECT * FROM customers WHERE id = $1', [id])
-  return rows[0] || null
+  if (!rows[0]) return null
+  return synthesizeContacts(rows[0])
 }
 
 async function listCustomers({ search, status } = {}) {
@@ -86,17 +102,26 @@ async function listCustomers({ search, status } = {}) {
 }
 
 async function updateCustomer(id, data) {
-  const keys = Object.keys(data).filter(k => UPDATABLE_CUSTOMER_COLUMNS.has(k))
+  const enriched = { ...data }
+  // Sync primary contact to legacy columns so search/backfill still works
+  if (Array.isArray(enriched.contacts)) {
+    const primary = enriched.contacts.find(c => c.primary) || enriched.contacts[0]
+    enriched.contact_name = primary?.name || null
+    enriched.contact_email = primary?.email || null
+    enriched.phone = primary?.phone || null
+  }
+  const keys = Object.keys(enriched).filter(k => UPDATABLE_CUSTOMER_COLUMNS.has(k))
   if (keys.length === 0) throw new Error('No valid fields to update')
 
-  const values = keys.map(k => data[k])
+  const values = keys.map(k => (k === 'contacts' && enriched[k] !== null ? JSON.stringify(enriched[k]) : enriched[k]))
   const setClause = keys.map((k, i) => `${k} = $${i + 2}`).join(', ')
 
   const { rows } = await pool.query(
     `UPDATE customers SET ${setClause}, updated_at = NOW() WHERE id = $1 RETURNING *`,
     [id, ...values]
   )
-  return rows[0] || null
+  if (!rows[0]) return null
+  return synthesizeContacts(rows[0])
 }
 
 async function deleteCustomer(id) {
@@ -133,7 +158,7 @@ async function getCustomerStats(customerId) {
   }
   const avgOrderSize = totalOrders > 0 ? Math.round(totalUnits / totalOrders) : 0
 
-  const recentQuotes = rows.slice(0, 5).map(q => ({
+  const quotes = rows.map(q => ({
     id: q.id,
     project_name: q.project_name,
     status: q.status,
@@ -144,7 +169,7 @@ async function getCustomerStats(customerId) {
     ? { id: rows[0].id, project_name: rows[0].project_name }
     : null
 
-  return { totalOrders, totalUnits, avgOrderSize, recentQuotes, lastOrder }
+  return { totalOrders, totalUnits, avgOrderSize, quotes, lastOrder }
 }
 
 async function backfillQuotesByEmail(customerId, contactEmail) {

@@ -87,7 +87,7 @@ export default function Ledger() {
               <thead>
                 <tr className="border-b border-outline-variant/30">
                   <th className="text-left px-4 py-3 text-xs font-bold tracking-wider text-on-surface-variant uppercase">ID</th>
-                  <th className="text-left px-4 py-3 text-xs font-bold tracking-wider text-on-surface-variant uppercase">Customer</th>
+                  <th className="text-left px-4 py-3 text-xs font-bold tracking-wider text-on-surface-variant uppercase">Account</th>
                   <th className="text-left px-4 py-3 text-xs font-bold tracking-wider text-on-surface-variant uppercase">Project</th>
                   <th className="text-left px-4 py-3 text-xs font-bold tracking-wider text-on-surface-variant uppercase">Status</th>
                   <th className="text-left px-4 py-3 text-xs font-bold tracking-wider text-on-surface-variant uppercase">Date</th>
