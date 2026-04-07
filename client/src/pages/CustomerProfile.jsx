@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { Link, useParams, useNavigate } from 'react-router-dom'
+import { Link, useParams } from 'react-router-dom'
 import NavBar from '../components/NavBar'
 
 function StatPill({ value, label }) {
@@ -47,7 +47,6 @@ const QUOTE_STATUS_COLORS = {
 
 export default function CustomerProfile() {
   const { id } = useParams()
-  const navigate = useNavigate()
   const [customer, setCustomer] = useState(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
@@ -210,7 +209,7 @@ export default function CustomerProfile() {
           <div className="flex gap-3 mt-4 flex-wrap">
             <StatPill value={customer.totalOrders} label="Orders" />
             <StatPill value={customer.totalUnits} label="Units" />
-            <StatPill value={customer.avgOrderSize || '—'} label="Avg Size" />
+            <StatPill value={customer.avgOrderSize ?? '—'} label="Avg Size" />
             {customer.lastOrder && (
               <Link to={`/quotes/${customer.lastOrder.id}`}>
                 <StatPill value={customer.lastOrder.id} label="Last Order" />
