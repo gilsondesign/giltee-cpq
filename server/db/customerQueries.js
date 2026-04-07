@@ -1,5 +1,14 @@
 const pool = require('./pool')
 
+const UPDATABLE_CUSTOMER_COLUMNS = new Set([
+  'company_name', 'account_type', 'account_status', 'drive_folder_url',
+  'contact_name', 'contact_email', 'phone', 'preferred_contact',
+  'billing_address', 'shipping_address', 'decoration_types', 'garment_vendor_pref',
+  'pantone_colors', 'ink_colors', 'print_locations', 'logo_file_location',
+  'sizing_notes', 'garment_style_prefs', 'reorder_likelihood', 'next_expected_order',
+  'account_notes', 'account_id'
+])
+
 async function createCustomer(data) {
   const {
     account_id, company_name, account_type, account_status = 'active',
@@ -60,15 +69,7 @@ async function listCustomers({ search, status } = {}) {
 }
 
 async function updateCustomer(id, data) {
-  const UPDATABLE = new Set([
-    'company_name', 'account_type', 'account_status', 'drive_folder_url',
-    'contact_name', 'contact_email', 'phone', 'preferred_contact',
-    'billing_address', 'shipping_address', 'decoration_types', 'garment_vendor_pref',
-    'pantone_colors', 'ink_colors', 'print_locations', 'logo_file_location',
-    'sizing_notes', 'garment_style_prefs', 'reorder_likelihood', 'next_expected_order',
-    'account_notes', 'account_id'
-  ])
-  const keys = Object.keys(data).filter(k => UPDATABLE.has(k))
+  const keys = Object.keys(data).filter(k => UPDATABLE_CUSTOMER_COLUMNS.has(k))
   if (keys.length === 0) throw new Error('No valid fields to update')
 
   const values = keys.map(k => data[k])
