@@ -35,21 +35,24 @@ describe('CreateQuote', () => {
     expect(screen.getByRole('heading', { name: 'New Quote' })).toBeInTheDocument()
   })
 
-  it('renders the raw input textarea', () => {
+  it('renders the raw input textarea', async () => {
     renderCreateQuote()
+    const user = userEvent.setup()
+    await user.click(screen.getByRole('button', { name: /paste inquiry/i }))
     expect(screen.getByPlaceholderText(/paste the customer/i)).toBeInTheDocument()
   })
 
   it('renders customer name and email fields', () => {
     renderCreateQuote()
-    expect(screen.getByPlaceholderText(/customer name/i)).toBeInTheDocument()
-    expect(screen.getByPlaceholderText(/customer@email/i)).toBeInTheDocument()
+    expect(screen.getByPlaceholderText(/name or organization/i)).toBeInTheDocument()
+    expect(screen.getByPlaceholderText(/customer@example.com/i)).toBeInTheDocument()
   })
 
   it('submits the form and navigates to the new quote', async () => {
     renderCreateQuote()
     const user = userEvent.setup()
 
+    await user.click(screen.getByRole('button', { name: /paste inquiry/i }))
     await user.type(screen.getByPlaceholderText(/paste the customer/i), '60 Bella+Canvas 3001 in Navy')
     await user.click(screen.getByRole('button', { name: /create quote/i }))
 
@@ -75,6 +78,7 @@ describe('CreateQuote', () => {
     )
     const user = userEvent.setup()
 
+    await user.click(screen.getByRole('button', { name: /paste inquiry/i }))
     await user.type(screen.getByPlaceholderText(/paste the customer/i), 'some input')
     await user.click(screen.getByRole('button', { name: /create quote/i }))
 

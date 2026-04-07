@@ -29,7 +29,7 @@ afterEach(() => vi.resetAllMocks())
 describe('Ledger', () => {
   it('renders the page heading', async () => {
     renderLedger()
-    await waitFor(() => expect(screen.getByText('Quote Ledger')).toBeInTheDocument())
+    await waitFor(() => expect(screen.getByRole('heading', { name: 'Quotes' })).toBeInTheDocument())
   })
 
   it('shows quotes after loading', async () => {

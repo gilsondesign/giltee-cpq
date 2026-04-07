@@ -21,9 +21,8 @@ describe('NavBar', () => {
 
   it('renders main nav links', () => {
     renderWithAuth(<NavBar />, { name: 'Lisa', role: 'member' })
-    expect(screen.getByText('Dashboard')).toBeInTheDocument()
-    expect(screen.getByText('New Quote')).toBeInTheDocument()
-    expect(screen.getByText('Clients')).toBeInTheDocument()
+    expect(screen.getByText('Quotes')).toBeInTheDocument()
+    expect(screen.getByText('Customers')).toBeInTheDocument()
   })
 
   it('shows admin link for admin users', () => {

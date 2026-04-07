@@ -110,9 +110,9 @@ describe('ViewQuote — ready', () => {
     const { default: userEvent } = await import('@testing-library/user-event')
     const user = userEvent.setup()
     renderViewQuote(MOCK_QUOTE_READY)
-    await waitFor(() => screen.getByRole('button', { name: /qa report/i }))
-    await user.click(screen.getByRole('button', { name: /qa report/i }))
-    await waitFor(() => expect(screen.getByText('APPROVED')).toBeInTheDocument())
+    await waitFor(() => screen.getByRole('button', { name: /quote quality/i }))
+    await user.click(screen.getByRole('button', { name: /quote quality/i }))
+    await waitFor(() => expect(screen.getByText('Approved')).toBeInTheDocument())
   })
 
   it('shows email draft content', async () => {
