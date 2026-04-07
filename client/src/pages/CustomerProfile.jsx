@@ -280,6 +280,7 @@ export default function CustomerProfile() {
                     ['print_locations', 'Print Locations'],
                     ['garment_style_prefs', 'Garment Prefs'],
                     ['sizing_notes', 'Sizing Notes'],
+                    ['logo_file_location', 'Logo Location'],
                   ].map(([key, label]) => (
                     <div key={key} className="flex flex-col gap-1">
                       <span className="text-xs text-on-surface-variant">{label}</span>
@@ -300,6 +301,7 @@ export default function CustomerProfile() {
                   <InfoRow label="Print Locs" value={f.print_locations} />
                   <InfoRow label="Garment Prefs" value={f.garment_style_prefs} />
                   <InfoRow label="Sizing Notes" value={f.sizing_notes} />
+                  <InfoRow label="Logo Location" value={f.logo_file_location} />
                 </div>
               )}
             </div>

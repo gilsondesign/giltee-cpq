@@ -40,6 +40,13 @@ router.post('/', async (req, res, next) => {
       await queries.updateQuote(quote.id, { customer_id: customerId })
       quote.customer_id = customerId
     }
+    if (req.body.selected_supplier) {
+      const valid = new Set(['OSP', 'REDWALL'])
+      if (valid.has(req.body.selected_supplier)) {
+        await queries.updateQuote(quote.id, { selected_supplier: req.body.selected_supplier })
+        quote.selected_supplier = req.body.selected_supplier
+      }
+    }
     res.status(201).json(quote)
   } catch (err) {
     next(err)

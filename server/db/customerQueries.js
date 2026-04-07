@@ -49,23 +49,40 @@ async function getCustomer(id) {
 }
 
 async function listCustomers({ search, status } = {}) {
-  let query = 'SELECT * FROM customers'
   const params = []
   const conditions = []
 
   if (status && status !== 'all') {
     params.push(status)
-    conditions.push(`account_status = $${params.length}`)
+    conditions.push(`c.account_status = $${params.length}`)
   }
   if (search) {
     params.push(`%${search}%`)
-    conditions.push(`(company_name ILIKE $${params.length} OR account_id ILIKE $${params.length})`)
+    conditions.push(`(c.company_name ILIKE $${params.length} OR c.account_id ILIKE $${params.length})`)
   }
-  if (conditions.length) query += ' WHERE ' + conditions.join(' AND ')
-  query += ' ORDER BY company_name ASC'
 
+  const where = conditions.length ? 'WHERE ' + conditions.join(' AND ') : ''
+
+  // Single query: join with aggregate stats to avoid N+1
+  const query = `
+    SELECT c.*,
+           COUNT(q.id)::int                    AS "totalOrders",
+           MAX(q.id)                            AS "lastOrderId",
+           (SELECT project_name FROM quotes
+            WHERE customer_id = c.id
+            ORDER BY created_at DESC LIMIT 1)  AS "lastOrderName"
+    FROM customers c
+    LEFT JOIN quotes q ON q.customer_id = c.id
+    ${where}
+    GROUP BY c.id
+    ORDER BY c.company_name ASC
+  `
   const { rows } = await pool.query(query, params)
-  return rows
+  return rows.map(r => ({
+    ...r,
+    totalOrders: r.totalOrders ?? 0,
+    lastOrder: r.lastOrderId ? { id: r.lastOrderId, project_name: r.lastOrderName } : null,
+  }))
 }
 
 async function updateCustomer(id, data) {

@@ -20,14 +20,7 @@ router.get('/', async (req, res, next) => {
   try {
     const { search, status } = req.query
     const customers = await customerQueries.listCustomers({ search, status })
-    // Attach computed stats to each customer
-    const withStats = await Promise.all(
-      customers.map(async c => {
-        const stats = await customerQueries.getCustomerStats(c.id)
-        return { ...c, ...stats }
-      })
-    )
-    res.json(withStats)
+    res.json(customers)
   } catch (err) {
     next(err)
   }

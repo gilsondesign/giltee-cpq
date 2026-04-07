@@ -71,6 +71,7 @@ export default function CreateQuote() {
         intake_record: buildIntakeRecord(f),
       }
       if (f.customer_id) body.customer_id = f.customer_id
+      if (f.selected_supplier) body.selected_supplier = f.selected_supplier
 
       const res = await fetch('/api/quotes', {
         method: 'POST',
