@@ -1,4 +1,4 @@
-import { render, screen, within } from '@testing-library/react'
+import { render, screen, within, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import {
   ADULT_SIZES,
@@ -260,9 +260,7 @@ describe('ProductCard style mismatch warning', () => {
       json: async () => ({ skus: [{ size: 'YS' }, { size: 'YM' }] }),
     })
     renderWithProduct({ product_type: 'youth', brand_style: '3001YCVC' })
-    // Wait a tick for effects to resolve, then confirm no alert
-    await new Promise(r => setTimeout(r, 50))
-    expect(screen.queryByRole('alert')).not.toBeInTheDocument()
+    await waitFor(() => expect(screen.queryByRole('alert')).not.toBeInTheDocument())
   })
 
   it('shows toddler warning when S&S returns only adult SKUs for toddler product', async () => {
@@ -277,8 +275,7 @@ describe('ProductCard style mismatch warning', () => {
   it('shows no warning when lookup fails', async () => {
     global.fetch = vi.fn().mockRejectedValue(new Error('network error'))
     renderWithProduct({ product_type: 'youth', brand_style: '3001CVC' })
-    await new Promise(r => setTimeout(r, 50))
-    expect(screen.queryByRole('alert')).not.toBeInTheDocument()
+    await waitFor(() => expect(screen.queryByRole('alert')).not.toBeInTheDocument())
   })
 
   it('shows no warning for adult product type even with brand_style set', async () => {
@@ -288,7 +285,6 @@ describe('ProductCard style mismatch warning', () => {
       json: async () => ({ skus: [{ size: 'S' }] }),
     })
     renderWithProduct({ product_type: 'adult', brand_style: '3001CVC' })
-    await new Promise(r => setTimeout(r, 50))
-    expect(screen.queryByRole('alert')).not.toBeInTheDocument()
+    await waitFor(() => expect(screen.queryByRole('alert')).not.toBeInTheDocument())
   })
 })

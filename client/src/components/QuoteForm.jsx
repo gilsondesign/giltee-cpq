@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import React, { useEffect, useState } from 'react'
 import CustomerPicker from './CustomerPicker'
 
 // ─── Constants ────────────────────────────────────────────────────────────────
@@ -173,8 +173,12 @@ function ProductCard({ product, index, onChange, onRemove, canRemove }) {
       setStyleMismatchWarning(null)
       return
     }
-    const color = (colors && colors[0]) || ''
-    fetch(`/api/garments/lookup?style=${encodeURIComponent(brand_style)}&color=${encodeURIComponent(color)}`)
+    const controller = new AbortController()
+    const color = colors ? colors.split(',')[0].trim() : ''
+    fetch(
+      `/api/garments/lookup?style=${encodeURIComponent(brand_style)}&color=${encodeURIComponent(color)}`,
+      { signal: controller.signal }
+    )
       .then(r => r.ok ? r.json() : null)
       .then(data => {
         if (!data || !Array.isArray(data.skus)) {
@@ -185,17 +189,16 @@ function ProductCard({ product, index, onChange, onRemove, canRemove }) {
         const toddlerSizes = ['2T', '4T', '6T']
         const targetSizes = product_type === 'toddler' ? toddlerSizes : youthSizes
         const hasMatch = data.skus.some(sku => targetSizes.includes(sku.size))
-        if (!hasMatch) {
-          setStyleMismatchWarning(
-            product_type === 'toddler'
-              ? 'Toddler sizes require a toddler garment style. Update the style or change the product type.'
-              : 'Youth sizes require a youth garment style (e.g. 3001YCVC). Update the style or change the product type.'
-          )
-        } else {
-          setStyleMismatchWarning(null)
-        }
+        setStyleMismatchWarning(hasMatch ? null :
+          product_type === 'toddler'
+            ? 'Toddler sizes require a toddler garment style. Update the style or change the product type.'
+            : 'Youth sizes require a youth garment style (e.g. 3001YCVC). Update the style or change the product type.'
+        )
       })
-      .catch(() => setStyleMismatchWarning(null))
+      .catch(err => {
+        if (err.name !== 'AbortError') setStyleMismatchWarning(null)
+      })
+    return () => controller.abort()
   }, [product.brand_style, product.product_type, product.colors]) // eslint-disable-line react-hooks/exhaustive-deps
 
   function set(key, val) {
@@ -255,7 +258,7 @@ function ProductCard({ product, index, onChange, onRemove, canRemove }) {
               <Field label="Colors" value={product.colors} onChange={v => set('colors', v)} placeholder="Navy, White (comma-separated)" className="col-span-2" />
             </div>
             {styleMismatchWarning && (
-              <p role="alert" style={{ color: 'red' }}>{styleMismatchWarning}</p>
+              <p role="alert" className="text-sm text-red-600 mt-1">{styleMismatchWarning}</p>
             )}
 
             {/* Product type selector */}
