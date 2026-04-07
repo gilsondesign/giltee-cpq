@@ -104,6 +104,89 @@ describe('calculateScreenPrintQuote', () => {
   })
 })
 
+describe('calculateScreenPrintQuote — custom PMS ink fee', () => {
+  it('applies no custom PMS fee when all ink colors are stock', async () => {
+    const result = await pricingService.calculateScreenPrintQuote({
+      quantity: 60,
+      garmentCostPerUnit: 4.50,
+      locations: [{ colorCount: 2, printSize: 'STANDARD', inkColors: [
+        { name: 'PANTONE 286 C', custom: false },
+        { name: 'PANTONE 485 C', custom: false },
+      ]}],
+      isDarkGarment: false,
+      isReorder: false,
+    })
+    expect(result.osp.setupFees.customPmsInk).toBe(0)
+    expect(result.redwall.setupFees.customPmsInk).toBe(0)
+  })
+
+  it('applies $20 per custom PMS color for OSP', async () => {
+    const result = await pricingService.calculateScreenPrintQuote({
+      quantity: 60,
+      garmentCostPerUnit: 4.50,
+      locations: [{ colorCount: 2, printSize: 'STANDARD', inkColors: [
+        { name: 'PANTONE 286 C', custom: false },
+        { name: 'PMS Custom Red', custom: true },
+      ]}],
+      isDarkGarment: false,
+      isReorder: false,
+    })
+    expect(result.osp.setupFees.customPmsInk).toBe(20)
+    expect(result.osp.orderTotal).toBe(
+      result.osp.perUnitTotal * 60 + result.osp.setupFees.screenSetup + 20
+    )
+  })
+
+  it('applies $40 for two custom PMS colors across two locations', async () => {
+    const result = await pricingService.calculateScreenPrintQuote({
+      quantity: 60,
+      garmentCostPerUnit: 4.50,
+      locations: [
+        { colorCount: 1, printSize: 'STANDARD', inkColors: [{ name: 'PMS Custom A', custom: true }] },
+        { colorCount: 1, printSize: 'STANDARD', inkColors: [{ name: 'PMS Custom B', custom: true }] },
+      ],
+      isDarkGarment: false,
+      isReorder: false,
+    })
+    expect(result.osp.setupFees.customPmsInk).toBe(40)
+  })
+
+  it('calculates Redwall customPmsInk fee using its own config value', async () => {
+    const result = await pricingService.calculateScreenPrintQuote({
+      quantity: 60,
+      garmentCostPerUnit: 4.50,
+      locations: [{ colorCount: 1, printSize: 'STANDARD', inkColors: [{ name: 'PMS Custom', custom: true }] }],
+      isDarkGarment: false,
+      isReorder: false,
+    })
+    // Both use their own config's customPmsInk value (default: 20 each)
+    expect(result.redwall.setupFees.customPmsInk).toBe(20)
+    expect(result.osp.setupFees.customPmsInk).toBe(20)
+  })
+
+  it('treats absent inkColors as zero custom colors', async () => {
+    const result = await pricingService.calculateScreenPrintQuote({
+      quantity: 60,
+      garmentCostPerUnit: 4.50,
+      locations: [{ colorCount: 2, printSize: 'STANDARD' }],
+      isDarkGarment: false,
+      isReorder: false,
+    })
+    expect(result.osp.setupFees.customPmsInk).toBe(0)
+  })
+
+  it('adds a flag message when OSP custom PMS fee applies', async () => {
+    const result = await pricingService.calculateScreenPrintQuote({
+      quantity: 60,
+      garmentCostPerUnit: 4.50,
+      locations: [{ colorCount: 1, printSize: 'STANDARD', inkColors: [{ name: 'PMS Custom', custom: true }] }],
+      isDarkGarment: false,
+      isReorder: false,
+    })
+    expect(result.osp.flags.some(f => f.includes('custom PMS'))).toBe(true)
+  })
+})
+
 describe('calculateDTFQuote', () => {
   it('calculates correct DTF quote for 60 units, standard print size', () => {
     const result = pricingService.calculateDTFQuote({
