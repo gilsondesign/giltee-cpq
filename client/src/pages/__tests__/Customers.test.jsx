@@ -28,12 +28,12 @@ async function renderCustomers() {
 describe('Customers list', () => {
   it('renders the page heading', async () => {
     await renderCustomers()
-    expect(screen.getByRole('heading', { name: 'Customers' })).toBeInTheDocument()
+    expect(screen.getByRole('heading', { name: 'Accounts' })).toBeInTheDocument()
   })
 
   it('renders the New Customer button', async () => {
     await renderCustomers()
-    expect(screen.getByText('+ New Customer')).toBeInTheDocument()
+    expect(screen.getByText('+ New Account')).toBeInTheDocument()
   })
 
   it('renders the status filter', async () => {

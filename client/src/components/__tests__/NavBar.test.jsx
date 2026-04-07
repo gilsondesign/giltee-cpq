@@ -22,7 +22,7 @@ describe('NavBar', () => {
   it('renders main nav links', () => {
     renderWithAuth(<NavBar />, { name: 'Lisa', role: 'member' })
     expect(screen.getByText('Quotes')).toBeInTheDocument()
-    expect(screen.getByText('Customers')).toBeInTheDocument()
+    expect(screen.getByText('Accounts')).toBeInTheDocument()
   })
 
   it('shows admin link for admin users', () => {
