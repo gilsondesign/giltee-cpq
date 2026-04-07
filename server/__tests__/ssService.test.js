@@ -14,6 +14,10 @@ const MOCK_SKUS = [
   { sku: 'B3001RED-S',  colorName: 'Red',   sizeName: 'S',  sizePriceCodeName: 'S',   customerPrice: 4.50, qty: 300, colorFrontImage: '/images/red.jpg'  },
 ]
 
+const MOCK_STYLES = [
+  { styleID: 12345, styleName: '3001CVC', brandName: 'Bella+Canvas' },
+]
+
 function mockFetchSuccess(data) {
   fetch.mockResolvedValueOnce({
     ok: true,
@@ -23,7 +27,8 @@ function mockFetchSuccess(data) {
 
 describe('ssService.lookupGarment', () => {
   it('returns available garment data when color is found', async () => {
-    mockFetchSuccess(MOCK_SKUS)
+    mockFetchSuccess(MOCK_STYLES)  // first fetch: styles lookup
+    mockFetchSuccess(MOCK_SKUS)    // second fetch: products lookup
     const result = await ssService.lookupGarment({ style: 'bella+canvas+3001', color: 'Navy' })
 
     expect(result.available).toBe(true)
@@ -33,7 +38,8 @@ describe('ssService.lookupGarment', () => {
   })
 
   it('returns extended size SKUs separately', async () => {
-    mockFetchSuccess(MOCK_SKUS)
+    mockFetchSuccess(MOCK_STYLES)  // first fetch: styles lookup
+    mockFetchSuccess(MOCK_SKUS)    // second fetch: products lookup
     const result = await ssService.lookupGarment({ style: 'bella+canvas+3001', color: 'Navy' })
 
     expect(result.extendedSkus).toHaveLength(1)
@@ -42,7 +48,8 @@ describe('ssService.lookupGarment', () => {
   })
 
   it('returns available: false with alternatives when color not found', async () => {
-    mockFetchSuccess(MOCK_SKUS)
+    mockFetchSuccess(MOCK_STYLES)  // first fetch: styles lookup
+    mockFetchSuccess(MOCK_SKUS)    // second fetch: products lookup
     const result = await ssService.lookupGarment({ style: 'bella+canvas+3001', color: 'Purple' })
 
     expect(result.available).toBe(false)
