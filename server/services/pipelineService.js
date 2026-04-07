@@ -160,7 +160,7 @@ For size_breakdown: extract size quantities (e.g. "10 smalls, 20 mediums" → "S
       }))
       const isDarkGarment = prod.edge_cases?.dark_garment || false
 
-      const result = pricingService.calculateQuote({
+      const result = await pricingService.calculateQuote({
         quantity,
         garmentCostPerUnit,
         decorationMethod,

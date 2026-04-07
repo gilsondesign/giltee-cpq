@@ -57,6 +57,65 @@ const DTG_COSTS = {
   OVERSIZED: [8.75, 8.45, 8.25, 8.00, 7.75, 7.50, 7.25, 7.00, 6.50],
 }
 
+// ─── Default config shape (converted from hardcoded constants) ────────────────
+
+function padTo12(costs) {
+  const arr = costs.slice(0, 12)
+  while (arr.length < 12) arr.push(null)
+  return arr
+}
+
+function buildDefaultConfig(tiers) {
+  return {
+    tiers: tiers.map(t => ({
+      min: t.min,
+      max: t.max === Infinity ? null : t.max,
+      costs: padTo12(t.costs),
+    })),
+    fees: {
+      screenFeePerColor: 20,
+      repeatScreenPerColor: 10,
+      inkSwitch: 20,
+      customPmsInk: 20,
+      screenFeeWaivedAt: 96,
+    },
+    printSizes: {
+      oversized: { surchargePercent: 15, screenFee: 15 },
+      jumbo: { surchargePercent: 50, screenFee: 20 },
+    },
+  }
+}
+
+function getDefaultConfig(manufacturer) {
+  if (manufacturer === 'OSP') return buildDefaultConfig(OSP_SCREEN_PRINT)
+  if (manufacturer === 'REDWALL') return buildDefaultConfig(REDWALL_SCREEN_PRINT)
+  throw new Error(`Unknown manufacturer: ${manufacturer}`)
+}
+
+// ─── In-memory cache ──────────────────────────────────────────────────────────
+
+const _cache = { OSP: null, REDWALL: null }
+
+function invalidateCache(manufacturer) {
+  _cache[manufacturer] = null
+}
+
+async function loadConfig(manufacturer) {
+  if (_cache[manufacturer]) return _cache[manufacturer]
+  try {
+    const { getPricingConfig } = require('../db/pricingQueries')
+    const row = await getPricingConfig(manufacturer)
+    if (row) {
+      _cache[manufacturer] = row.config
+      return _cache[manufacturer]
+    }
+  } catch {
+    // DB unavailable — fall through to hardcoded
+  }
+  _cache[manufacturer] = getDefaultConfig(manufacturer)
+  return _cache[manufacturer]
+}
+
 // ─── Lookup helpers ───────────────────────────────────────────────────────────
 
 function getMarginForQuantity(qty) {
@@ -64,17 +123,19 @@ function getMarginForQuantity(qty) {
   return tier ? tier.profit : null
 }
 
-function getOspDecorationCost(qty, colorCount) {
-  const row = OSP_SCREEN_PRINT.find(r => qty >= r.min && qty <= r.max)
+async function getOspDecorationCost(qty, colorCount) {
+  const config = await loadConfig('OSP')
+  const row = config.tiers.find(r => qty >= r.min && qty <= (r.max === null ? Infinity : r.max))
   if (!row) return null
-  const idx = Math.min(colorCount, 8) - 1
+  const idx = Math.min(colorCount, 12) - 1
   return row.costs[idx] ?? null
 }
 
-function getRedwallDecorationCost(qty, colorCount) {
-  const row = REDWALL_SCREEN_PRINT.find(r => qty >= r.min && qty <= r.max)
+async function getRedwallDecorationCost(qty, colorCount) {
+  const config = await loadConfig('REDWALL')
+  const row = config.tiers.find(r => qty >= r.min && qty <= (r.max === null ? Infinity : r.max))
   if (!row) return null
-  const idx = Math.min(colorCount, 8) - 1
+  const idx = Math.min(colorCount, 12) - 1
   return row.costs[idx] ?? null
 }
 
@@ -107,7 +168,9 @@ function round2(n) {
  *   isReorder: boolean,
  * }} params
  */
-function calculateScreenPrintQuote({ quantity, garmentCostPerUnit, locations, isDarkGarment, isReorder }) {
+async function calculateScreenPrintQuote({ quantity, garmentCostPerUnit, locations, isDarkGarment, isReorder }) {
+  const ospConfig = await loadConfig('OSP')
+  const redwallConfig = await loadConfig('REDWALL')
   const margin = getMarginForQuantity(quantity)
   const flags = []
 
@@ -115,34 +178,40 @@ function calculateScreenPrintQuote({ quantity, garmentCostPerUnit, locations, is
     flags.push(`Quantity ${quantity} is below the screen print minimum (24 units). Consider DTF or DTG.`)
   }
 
-  // Sum decoration cost across all locations
-  function sumDecoration(costFn) {
-    return locations.reduce((sum, loc) => {
-      // Add underbase color on dark garments (only for screen print)
+  async function sumDecoration(costFn) {
+    let total = 0
+    for (const loc of locations) {
       const effectiveColors = isDarkGarment ? loc.colorCount + 1 : loc.colorCount
-      const cost = costFn(quantity, effectiveColors)
-      return sum + (cost || 0)
-    }, 0)
+      const cost = await costFn(quantity, effectiveColors)
+      total += cost || 0
+    }
+    return total
   }
 
-  const totalOspDecoration = round2(sumDecoration(getOspDecorationCost))
-  const totalRedwallDecoration = round2(sumDecoration(getRedwallDecorationCost))
+  const totalOspDecoration = round2(await sumDecoration(getOspDecorationCost))
+  const totalRedwallDecoration = round2(await sumDecoration(getRedwallDecorationCost))
   const perUnitProfit = margin || 0
 
-  // Setup fees — OSP: $20/color waived at 96+; Redwall: $32/color/location waived at 144+
   const totalColors = locations.reduce((sum, loc) => {
     return sum + (isDarkGarment ? loc.colorCount + 1 : loc.colorCount)
   }, 0)
 
-  const ospSetupFee = quantity >= 96 ? 0 : (isReorder ? 10 : 20) * totalColors
-  const redwallSetupFee = quantity >= 144 ? 0 : locations.reduce((sum, loc) => {
-    const colors = isDarkGarment ? loc.colorCount + 1 : loc.colorCount
-    return sum + (isReorder ? 26 : 32) * colors
-  }, 0)
+  const ospFees = ospConfig.fees
+  const redwallFees = redwallConfig.fees
+
+  const ospSetupFee = quantity >= (ospFees.screenFeeWaivedAt || 96)
+    ? 0
+    : (isReorder ? ospFees.repeatScreenPerColor : ospFees.screenFeePerColor) * totalColors
+
+  const redwallSetupFee = quantity >= (redwallFees.screenFeeWaivedAt || 144)
+    ? 0
+    : locations.reduce((sum, loc) => {
+        const colors = isDarkGarment ? loc.colorCount + 1 : loc.colorCount
+        return sum + (isReorder ? redwallFees.repeatScreenPerColor : redwallFees.screenFeePerColor) * colors
+      }, 0)
 
   const ospPerUnit = round2(garmentCostPerUnit + totalOspDecoration + perUnitProfit)
   const redwallPerUnit = round2(garmentCostPerUnit + totalRedwallDecoration + perUnitProfit)
-
   const ospTotal = round2(ospPerUnit * quantity + ospSetupFee)
   const redwallTotal = round2(redwallPerUnit * quantity + redwallSetupFee)
 
@@ -219,7 +288,7 @@ function calculateDTGQuote({ quantity, garmentCostPerUnit, printSize = 'STANDARD
  * Calculate pricing for a quote based on decoration method.
  * For SCREEN_PRINT, returns both OSP and Redwall. For others, returns a single breakdown.
  */
-function calculateQuote(params) {
+async function calculateQuote(params) {
   const { decorationMethod } = params
   switch (decorationMethod) {
     case 'SCREEN_PRINT':
@@ -240,6 +309,8 @@ function calculateQuote(params) {
 }
 
 module.exports = {
+  getDefaultConfig,
+  invalidateCache,
   getMarginForQuantity,
   getOspDecorationCost,
   getRedwallDecorationCost,
