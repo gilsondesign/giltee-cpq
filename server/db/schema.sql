@@ -51,7 +51,9 @@ CREATE TABLE IF NOT EXISTS quotes (
   activity_log         JSONB        NOT NULL DEFAULT '[]',
   created_at           TIMESTAMP    NOT NULL DEFAULT NOW(),
   updated_at           TIMESTAMP    NOT NULL DEFAULT NOW(),
-  created_by           VARCHAR(255)      -- Stores user email/name (denormalized per PRD — not a FK)
+  created_by           VARCHAR(255),     -- Stores user email/name (denormalized per PRD — not a FK)
+  selected_supplier    VARCHAR(20),
+  customer_id          INTEGER REFERENCES customers(id) ON DELETE SET NULL
 );
 
 -- Indexes for common query patterns
@@ -60,6 +62,39 @@ CREATE INDEX IF NOT EXISTS idx_quotes_created_by    ON quotes (created_by);
 CREATE INDEX IF NOT EXISTS idx_quotes_customer_email ON quotes (customer_email);
 CREATE INDEX IF NOT EXISTS idx_quotes_created_at    ON quotes (created_at DESC);
 CREATE INDEX IF NOT EXISTS idx_invitations_email    ON invitations (email);
+
+-- Customers
+CREATE TABLE IF NOT EXISTS customers (
+  id                   SERIAL        PRIMARY KEY,
+  account_id           VARCHAR(20)   UNIQUE NOT NULL,
+  company_name         VARCHAR(255)  NOT NULL,
+  account_type         VARCHAR(100),
+  account_status       VARCHAR(20)   NOT NULL DEFAULT 'active',
+  drive_folder_url     VARCHAR(500),
+  contact_name         VARCHAR(255),
+  contact_email        VARCHAR(255),
+  phone                VARCHAR(50),
+  preferred_contact    VARCHAR(50),
+  billing_address      TEXT,
+  shipping_address     TEXT,
+  decoration_types     TEXT,
+  garment_vendor_pref  VARCHAR(255),
+  pantone_colors       TEXT,
+  ink_colors           TEXT,
+  print_locations      TEXT,
+  logo_file_location   VARCHAR(500),
+  sizing_notes         TEXT,
+  garment_style_prefs  TEXT,
+  reorder_likelihood   VARCHAR(50),
+  next_expected_order  TEXT,
+  account_notes        TEXT,
+  created_at           TIMESTAMP     NOT NULL DEFAULT NOW(),
+  updated_at           TIMESTAMP     NOT NULL DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS idx_customers_company_name  ON customers (company_name);
+CREATE INDEX IF NOT EXISTS idx_customers_account_id    ON customers (account_id);
+CREATE INDEX IF NOT EXISTS idx_customers_contact_email ON customers (contact_email);
 
 -- Sequence for quote ID generation (atomic, concurrent-safe, deletion-safe)
 CREATE SEQUENCE IF NOT EXISTS quotes_seq START 1;
