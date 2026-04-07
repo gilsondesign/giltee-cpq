@@ -281,7 +281,6 @@ export default function CustomerProfile() {
                     ['print_locations', 'Print Locations'],
                     ['garment_style_prefs', 'Garment Prefs'],
                     ['sizing_notes', 'Sizing Notes'],
-                    ['logo_file_location', 'Logo Location'],
                   ].map(([key, label]) => (
                     <div key={key} className="flex flex-col gap-1">
                       <span className="text-xs text-on-surface-variant">{label}</span>
