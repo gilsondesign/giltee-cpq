@@ -9,6 +9,7 @@ import Customers from './pages/Customers'
 import CreateCustomer from './pages/CreateCustomer'
 import CustomerProfile from './pages/CustomerProfile'
 import Admin from './pages/Admin'
+import AdminPricing from './pages/AdminPricing'
 import Login from './pages/Login'
 import AcceptInvite from './pages/AcceptInvite'
 
@@ -51,6 +52,7 @@ export default function App() {
         <Route path="/customers/new" element={<AuthGuard><CreateCustomer /></AuthGuard>} />
         <Route path="/customers/:id" element={<AuthGuard><CustomerProfile /></AuthGuard>} />
         <Route path="/admin/users" element={<AuthGuard adminOnly><Admin /></AuthGuard>} />
+        <Route path="/admin/pricing" element={<AuthGuard adminOnly><AdminPricing /></AuthGuard>} />
 
         {/* Catch-all */}
         <Route path="*" element={<Navigate to="/" replace />} />
