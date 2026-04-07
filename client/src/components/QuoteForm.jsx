@@ -67,7 +67,7 @@ function productToFields(p, expanded = false) {
     decoration_method: d.method || 'SCREEN_PRINT',
     locations: (d.locations?.length
       ? d.locations
-      : [{ name: 'Front chest', color_count: 1, print_size: 'STANDARD' }]
+      : [{ name: 'Front chest', color_count: 1, print_size: 'STANDARD', ink_colors: [] }]
     ).map(l => ({
       name: l.name || '',
       color_count: l.color_count ?? l.colorCount ?? 1,
