@@ -98,3 +98,11 @@ CREATE INDEX IF NOT EXISTS idx_invitations_email    ON invitations (email);
 
 -- Sequence for quote ID generation (atomic, concurrent-safe, deletion-safe)
 CREATE SEQUENCE IF NOT EXISTS quotes_seq START 1;
+
+-- Pricing configuration (per manufacturer, editable via admin UI)
+CREATE TABLE IF NOT EXISTS pricing_config (
+  manufacturer VARCHAR(20) PRIMARY KEY,
+  config       JSONB NOT NULL,
+  updated_at   TIMESTAMP NOT NULL DEFAULT NOW(),
+  updated_by   VARCHAR(255)
+);

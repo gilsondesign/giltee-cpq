@@ -48,6 +48,7 @@
   },
   "jest": {
     "testEnvironment": "node",
-    "testMatch": ["<rootDir>/server/__tests__/**/*.test.js"]
+    "testMatch": ["**/server/__tests__/**/*.test.js"],
+    "testPathIgnorePatterns": ["/node_modules/"]
   }
 }
