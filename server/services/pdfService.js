@@ -496,7 +496,11 @@ function buildDocDefinition(quote, supplier) {
     if (ec.dark_garment) decRows.push(['Dark Garment', 'Yes — underbase added to color count'])
     if (ec.individual_names) decRows.push(['Individual Names / Numbers', 'Yes — personalization required per piece'])
     if (ec.extended_sizes) decRows.push(['Extended Sizes (2XL+)', 'Yes — may carry an additional per-unit charge'])
-    if (ec.youth_sizes || prod.youth_sizes) decRows.push(['Youth Sizes', 'Yes — youth sizing included'])
+    const productType = prod.product_type || (prod.youth_sizes ? 'youth' : null)
+    if (productType && productType !== 'adult') {
+      const label = productType.charAt(0).toUpperCase() + productType.slice(1)
+      decRows.push(['Product Type', label])
+    }
     decorationSection.push(
       secLabel(products.length > 1 ? `Decoration Details — Product ${pi + 1}` : 'Decoration Details'),
       infoGrid(decRows),
