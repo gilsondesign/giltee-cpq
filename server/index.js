@@ -130,6 +130,7 @@ app.use('/api', requireAuth)
 app.use('/api/quotes', require('./routes/quotes'))
 app.use('/api/garments', require('./routes/garments'))
 app.use('/api/gmail', require('./routes/gmail'))
+app.use('/api/customers', require('./routes/customers'))
 
 // Serve production client
 if (process.env.NODE_ENV === 'production') {
