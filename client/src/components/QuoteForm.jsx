@@ -4,6 +4,8 @@ import CustomerPicker from './CustomerPicker'
 // ─── Constants ────────────────────────────────────────────────────────────────
 export const ADULT_SIZES = ['XS', 'S', 'M', 'L', 'XL', '2XL', '3XL', '4XL', '5XL']
 export const YOUTH_SIZES = ['YXS', 'YS', 'YM', 'YL', 'YXL']
+export const TODDLER_SIZES = ['2T', '4T', '6T']
+export const PRODUCT_TYPES = ['adult', 'youth', 'toddler', 'headwear']
 
 // ─── Size helpers ─────────────────────────────────────────────────────────────
 export function parseSizeBreakdown(breakdown) {
@@ -15,7 +17,7 @@ export function parseSizeBreakdown(breakdown) {
     const match = pair.match(/^([A-Z0-9]+)[:\-](\d+)$/i)
     if (match) {
       const key = match[1].toUpperCase()
-      if (key in result || YOUTH_SIZES.includes(key)) result[key] = match[2]
+      if (key in result || YOUTH_SIZES.includes(key) || TODDLER_SIZES.includes(key)) result[key] = match[2]
     }
   })
   return result
@@ -53,12 +55,14 @@ export function normalizeIntakeRecord(ir) {
 function productToFields(p, expanded = false) {
   const d = p.decoration || {}
   const e = p.edge_cases || {}
+  // Backwards compat: old records have youth_sizes: true instead of product_type
+  const product_type = p.product_type || (p.youth_sizes ? 'youth' : 'adult')
   return {
+    product_type,
     brand_style: p.brand_style || '',
     quantity: p.quantity != null ? String(p.quantity) : '',
     colors: (p.colors || []).join(', '),
     sizes: parseSizeBreakdown(p.size_breakdown),
-    youth_sizes: p.youth_sizes || false,
     decoration_method: d.method || 'SCREEN_PRINT',
     locations: (d.locations?.length
       ? d.locations
@@ -83,12 +87,13 @@ export function buildEmptyProduct({ expanded = true } = {}) {
 }
 
 export function serializeProduct(p) {
+  const isHeadwear = p.product_type === 'headwear'
   return {
+    product_type: p.product_type || 'adult',
     brand_style: p.brand_style || null,
     quantity: p.quantity ? parseInt(p.quantity, 10) : null,
     colors: p.colors ? p.colors.split(',').map(s => s.trim()).filter(Boolean) : [],
-    size_breakdown: serializeSizeBreakdown(p.sizes),
-    youth_sizes: p.youth_sizes || false,
+    size_breakdown: isHeadwear ? null : serializeSizeBreakdown(p.sizes),
     decoration: {
       method: p.decoration_method || null,
       locations: p.locations.filter(l => l.name),
