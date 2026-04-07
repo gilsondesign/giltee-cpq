@@ -219,45 +219,48 @@ function ProductCard({ product, index, onChange, onRemove, canRemove }) {
               <Field label="Colors" value={product.colors} onChange={v => set('colors', v)} placeholder="Navy, White (comma-separated)" className="col-span-2" />
             </div>
 
+            {/* Product type selector */}
+            <div className="flex gap-3 py-2 items-center border-b border-outline-variant/20 mt-3">
+              <label htmlFor={`type-${index}`} className="text-xs text-on-surface-variant w-28 shrink-0">Product Type</label>
+              <select
+                id={`type-${index}`}
+                value={product.product_type || 'adult'}
+                onChange={e => onChange({ ...product, product_type: e.target.value, sizes: {} })}
+                className="flex-1 text-sm bg-surface border border-outline-variant rounded px-2 py-1.5 text-on-surface focus:outline-none focus:ring-1 focus:ring-primary"
+              >
+                <option value="adult">Adult</option>
+                <option value="youth">Youth</option>
+                <option value="toddler">Toddler</option>
+                <option value="headwear">Headwear</option>
+              </select>
+            </div>
+
             {/* Size grid */}
-            <div className="border-b border-outline-variant/20 pb-3 mt-3">
-              <p className="text-xs text-on-surface-variant mb-2">Size breakdown <span className="text-on-surface-variant/60">(qty per size)</span></p>
-              <div className="flex flex-wrap gap-2">
-                {ADULT_SIZES.map(size => (
-                  <div key={size} className="flex flex-col items-center gap-1">
-                    <span className={`text-xs font-medium ${['2XL', '3XL', '4XL', '5XL'].includes(size) ? 'text-secondary' : 'text-on-surface-variant'}`}>{size}</span>
-                    <input
-                      type="number" min="0"
-                      value={product.sizes[size] || ''}
-                      onChange={e => set('sizes', { ...product.sizes, [size]: e.target.value })}
-                      className="w-14 text-sm text-center bg-surface border border-outline-variant rounded px-1 py-1 text-on-surface focus:outline-none focus:ring-1 focus:ring-primary"
-                      placeholder="0"
-                    />
+            {(() => {
+              const currentSizes = product.product_type === 'youth' ? YOUTH_SIZES
+                : product.product_type === 'toddler' ? TODDLER_SIZES
+                : ADULT_SIZES
+              return product.product_type !== 'headwear' && (
+                <div className="border-b border-outline-variant/20 pb-3 mt-3">
+                  <p className="text-xs text-on-surface-variant mb-2">Size breakdown <span className="text-on-surface-variant/60">(qty per size)</span></p>
+                  <div className="flex flex-wrap gap-2">
+                    {currentSizes.map(size => (
+                      <div key={size} className="flex flex-col items-center gap-1">
+                        <span className={`text-xs font-medium ${['2XL', '3XL', '4XL', '5XL'].includes(size) ? 'text-secondary' : 'text-on-surface-variant'}`}>{size}</span>
+                        <input
+                          type="number" min="0"
+                          title={`${size} size quantity`}
+                          value={product.sizes?.[size] || ''}
+                          onChange={e => set('sizes', { ...product.sizes, [size]: e.target.value })}
+                          className="w-14 text-sm text-center bg-surface border border-outline-variant rounded px-1 py-1 text-on-surface focus:outline-none focus:ring-1 focus:ring-primary"
+                          placeholder="0"
+                        />
+                      </div>
+                    ))}
                   </div>
-                ))}
-              </div>
-              {product.youth_sizes && (
-                <div className="flex flex-wrap gap-2 mt-3">
-                  <p className="w-full text-xs text-on-surface-variant mb-1">Youth sizes</p>
-                  {YOUTH_SIZES.map(size => (
-                    <div key={size} className="flex flex-col items-center gap-1">
-                      <span className="text-xs font-medium text-on-surface-variant">{size}</span>
-                      <input
-                        type="number" min="0"
-                        value={product.sizes[size] || ''}
-                        onChange={e => set('sizes', { ...product.sizes, [size]: e.target.value })}
-                        className="w-14 text-sm text-center bg-surface border border-outline-variant rounded px-1 py-1 text-on-surface focus:outline-none focus:ring-1 focus:ring-primary"
-                        placeholder="0"
-                      />
-                    </div>
-                  ))}
                 </div>
-              )}
-            </div>
-            <div className="flex items-center gap-2 mt-2">
-              <input type="checkbox" id={`youth-${index}`} checked={!!product.youth_sizes} onChange={e => set('youth_sizes', e.target.checked)} className="w-4 h-4 accent-primary" />
-              <label htmlFor={`youth-${index}`} className="text-xs text-on-surface-variant cursor-pointer">Include youth sizes</label>
-            </div>
+              )
+            })()}
           </div>
 
           {/* Decoration */}
