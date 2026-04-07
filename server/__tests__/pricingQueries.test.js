@@ -11,6 +11,10 @@ const TEST_CONFIG = {
   },
 }
 
+beforeEach(async () => {
+  await pool.query('DELETE FROM pricing_config WHERE manufacturer = $1', [TEST_MANUFACTURER])
+})
+
 afterAll(async () => {
   await pool.query('DELETE FROM pricing_config WHERE manufacturer = $1', [TEST_MANUFACTURER])
   await pool.end()
@@ -30,12 +34,14 @@ describe('pricingQueries', () => {
   })
 
   it('getPricingConfig returns the saved config', async () => {
+    await upsertPricingConfig(TEST_MANUFACTURER, TEST_CONFIG, 'test@giltee.com')
     const row = await getPricingConfig(TEST_MANUFACTURER)
     expect(row).not.toBeNull()
     expect(row.config.tiers).toHaveLength(1)
   })
 
   it('upsertPricingConfig updates an existing row', async () => {
+    await upsertPricingConfig(TEST_MANUFACTURER, TEST_CONFIG, 'test@giltee.com')
     const updated = { ...TEST_CONFIG, fees: { ...TEST_CONFIG.fees, screenFeePerColor: 25 } }
     const row = await upsertPricingConfig(TEST_MANUFACTURER, updated, 'other@giltee.com')
     expect(row.config.fees.screenFeePerColor).toBe(25)
