@@ -144,3 +144,23 @@ describe('pipelineService.runQuotePipeline', () => {
     )
   })
 })
+
+describe('pipelineService intake prompt', () => {
+  const fs = require('fs')
+  const path = require('path')
+  const source = fs.readFileSync(
+    path.join(__dirname, '../services/pipelineService.js'),
+    'utf8'
+  )
+
+  it('includes toddler size codes', () => {
+    expect(source).toContain('2T')
+    expect(source).toContain('4T')
+    expect(source).toContain('6T')
+  })
+
+  it('uses product_type instead of youth_sizes in intake schema', () => {
+    expect(source).toContain('product_type')
+    expect(source).not.toContain('"youth_sizes": false')
+  })
+})

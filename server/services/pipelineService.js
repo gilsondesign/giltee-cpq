@@ -93,7 +93,7 @@ Return ONLY valid JSON matching this schema (use null for unknown fields):
       "quantity": null,
       "size_breakdown": null,
       "colors": [],
-      "youth_sizes": false,
+      "product_type": "adult",
       "decoration": {
         "method": null,
         "locations": [],
@@ -111,7 +111,8 @@ Return ONLY valid JSON matching this schema (use null for unknown fields):
 If the inquiry mentions multiple garment styles or groups, include one object per product in the "products" array.
 For decoration.method use: SCREEN_PRINT, DTF, DTG, or EMBROIDERY
 For decoration.locations[].print_size use: STANDARD, OVERSIZED, or JUMBO
-For size_breakdown: extract size quantities (e.g. "10 smalls, 20 mediums" → "S:10, M:20"). Codes: XS, S, M, L, XL, 2XL, 3XL, 4XL, 5XL, YXS, YS, YM, YL, YXL.`,
+For size_breakdown: extract size quantities (e.g. "10 smalls, 20 mediums" → "S:10, M:20"). Codes: XS, S, M, L, XL, 2XL, 3XL, 4XL, 5XL, YXS, YS, YM, YL, YXL, 2T, 4T, 6T.
+For product_type: use 'adult' (default), 'youth' (for youth garments), 'toddler' (for toddler garments), or 'headwear' (for hats/caps).`,
       })
       const parsed = claudeService.parseJSONFromText(intakeText)
       intake_record = normalizeIntakeRecord(parsed)
