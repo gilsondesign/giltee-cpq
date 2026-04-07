@@ -5,7 +5,9 @@ import { AuthProvider, useAuth } from './context/AuthContext'
 import Ledger from './pages/Ledger'
 import CreateQuote from './pages/CreateQuote'
 import ViewQuote from './pages/ViewQuote'
-import Clients from './pages/Clients'
+import Customers from './pages/Customers'
+import CreateCustomer from './pages/CreateCustomer'
+import CustomerProfile from './pages/CustomerProfile'
 import Admin from './pages/Admin'
 import Login from './pages/Login'
 import AcceptInvite from './pages/AcceptInvite'
@@ -45,7 +47,9 @@ export default function App() {
         <Route path="/" element={<AuthGuard><Ledger /></AuthGuard>} />
         <Route path="/quotes/new" element={<AuthGuard><CreateQuote /></AuthGuard>} />
         <Route path="/quotes/:id" element={<AuthGuard><ViewQuote /></AuthGuard>} />
-        <Route path="/clients" element={<AuthGuard><Clients /></AuthGuard>} />
+        <Route path="/customers" element={<AuthGuard><Customers /></AuthGuard>} />
+        <Route path="/customers/new" element={<AuthGuard><CreateCustomer /></AuthGuard>} />
+        <Route path="/customers/:id" element={<AuthGuard><CustomerProfile /></AuthGuard>} />
         <Route path="/admin/users" element={<AuthGuard adminOnly><Admin /></AuthGuard>} />
 
         {/* Catch-all */}

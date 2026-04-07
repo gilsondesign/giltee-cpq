@@ -24,7 +24,7 @@ export default function NavBar() {
       <div className="flex items-center gap-6">
         {[
           { to: '/', label: 'Quotes' },
-          { to: '/clients', label: 'Customers' },
+          { to: '/customers', label: 'Customers' },
         ].map(({ to, label }) => (
           <NavLink
             key={to}
