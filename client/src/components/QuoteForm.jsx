@@ -173,6 +173,10 @@ function ProductCard({ product, index, onChange, onRemove, canRemove }) {
     onChange({ ...product, _expanded: !expanded })
   }
 
+  const currentSizes = product.product_type === 'youth' ? YOUTH_SIZES
+    : product.product_type === 'toddler' ? TODDLER_SIZES
+    : ADULT_SIZES
+
   const summary = [
     product.brand_style,
     product.colors,
@@ -236,31 +240,26 @@ function ProductCard({ product, index, onChange, onRemove, canRemove }) {
             </div>
 
             {/* Size grid */}
-            {(() => {
-              const currentSizes = product.product_type === 'youth' ? YOUTH_SIZES
-                : product.product_type === 'toddler' ? TODDLER_SIZES
-                : ADULT_SIZES
-              return product.product_type !== 'headwear' && (
-                <div className="border-b border-outline-variant/20 pb-3 mt-3">
-                  <p className="text-xs text-on-surface-variant mb-2">Size breakdown <span className="text-on-surface-variant/60">(qty per size)</span></p>
-                  <div className="flex flex-wrap gap-2">
-                    {currentSizes.map(size => (
-                      <div key={size} className="flex flex-col items-center gap-1">
-                        <span className={`text-xs font-medium ${['2XL', '3XL', '4XL', '5XL'].includes(size) ? 'text-secondary' : 'text-on-surface-variant'}`}>{size}</span>
-                        <input
-                          type="number" min="0"
-                          title={`${size} size quantity`}
-                          value={product.sizes?.[size] || ''}
-                          onChange={e => set('sizes', { ...product.sizes, [size]: e.target.value })}
-                          className="w-14 text-sm text-center bg-surface border border-outline-variant rounded px-1 py-1 text-on-surface focus:outline-none focus:ring-1 focus:ring-primary"
-                          placeholder="0"
-                        />
-                      </div>
-                    ))}
-                  </div>
+            {product.product_type !== 'headwear' && (
+              <div className="border-b border-outline-variant/20 pb-3 mt-3">
+                <p className="text-xs text-on-surface-variant mb-2">Size breakdown <span className="text-on-surface-variant/60">(qty per size)</span></p>
+                <div className="flex flex-wrap gap-2">
+                  {currentSizes.map(size => (
+                    <div key={size} className="flex flex-col items-center gap-1">
+                      <span className={`text-xs font-medium ${['2XL', '3XL', '4XL', '5XL'].includes(size) ? 'text-secondary' : 'text-on-surface-variant'}`}>{size}</span>
+                      <input
+                        type="number" min="0"
+                        title={`${size} size quantity`}
+                        value={product.sizes?.[size] || ''}
+                        onChange={e => set('sizes', { ...product.sizes, [size]: e.target.value })}
+                        className="w-14 text-sm text-center bg-surface border border-outline-variant rounded px-1 py-1 text-on-surface focus:outline-none focus:ring-1 focus:ring-primary"
+                        placeholder="0"
+                      />
+                    </div>
+                  ))}
                 </div>
-              )
-            })()}
+              </div>
+            )}
           </div>
 
           {/* Decoration */}
