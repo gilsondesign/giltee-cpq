@@ -1,3 +1,6 @@
+import { useEffect } from 'react'
+import CustomerPicker from './CustomerPicker'
+
 // ─── Constants ────────────────────────────────────────────────────────────────
 export const ADULT_SIZES = ['XS', 'S', 'M', 'L', 'XL', '2XL', '3XL', '4XL', '5XL']
 export const YOUTH_SIZES = ['YXS', 'YS', 'YM', 'YL', 'YXL']
@@ -108,6 +111,8 @@ export function buildEditFields(q) {
     ? ir.products.map((p, i) => productToFields(p, i === 0))
     : [buildEmptyProduct({ expanded: true })]
   return {
+    customer_id: q.customer_id || null,
+    linked_customer: null, // populated at runtime by QuoteForm when loading an existing linked customer
     customer_name: q.customer_name || '',
     customer_email: q.customer_email || '',
     project_name: q.project_name || '',
@@ -340,6 +345,16 @@ function ProductCard({ product, index, onChange, onRemove, canRemove }) {
 export default function QuoteForm({ fields, setFields }) {
   const hasScreenPrint = (fields.products || []).some(p => p.decoration_method === 'SCREEN_PRINT')
 
+  // Load linked customer record on mount if customer_id is set but linked_customer is not yet populated
+  useEffect(() => {
+    if (fields.customer_id && !fields.linked_customer) {
+      fetch(`/api/customers/${fields.customer_id}`, { credentials: 'include' })
+        .then(r => r.ok ? r.json() : null)
+        .then(c => { if (c) setFields(f => ({ ...f, linked_customer: c })) })
+        .catch(() => {})
+    }
+  }, [fields.customer_id]) // eslint-disable-line react-hooks/exhaustive-deps
+
   function updateProduct(i, newProduct) {
     setFields(f => ({ ...f, products: f.products.map((p, j) => j === i ? newProduct : p) }))
   }
@@ -362,6 +377,24 @@ export default function QuoteForm({ fields, setFields }) {
       {/* Customer */}
       <div>
         <p className="text-xs font-semibold text-primary uppercase tracking-wider mb-3">Customer</p>
+        <CustomerPicker
+          linkedCustomerId={fields.customer_id}
+          linkedCustomer={fields.linked_customer}
+          onLink={c => setFields(f => ({
+            ...f,
+            customer_id: c.id,
+            linked_customer: c,
+            customer_name: c.company_name,
+            customer_email: c.contact_email || f.customer_email,
+          }))}
+          onUnlink={() => setFields(f => ({
+            ...f,
+            customer_id: null,
+            linked_customer: null,
+            customer_name: '',
+            customer_email: '',
+          }))}
+        />
         <div className="grid grid-cols-2 gap-3">
           <Field label="Name" value={fields.customer_name} onChange={v => setFields(f => ({ ...f, customer_name: v }))} placeholder="Name or organization" />
           <Field label="Email" type="email" value={fields.customer_email} onChange={v => setFields(f => ({ ...f, customer_email: v }))} placeholder="customer@example.com" />

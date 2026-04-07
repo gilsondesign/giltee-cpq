@@ -1,5 +1,5 @@
-import { useState } from 'react'
-import { Link, useNavigate } from 'react-router-dom'
+import { useState, useEffect } from 'react'
+import { Link, useNavigate, useSearchParams } from 'react-router-dom'
 import NavBar from '../components/NavBar'
 import QuoteForm, { buildEditFields, serializeProduct } from '../components/QuoteForm'
 
@@ -33,6 +33,26 @@ export default function CreateQuote() {
   const [rawInput, setRawInput] = useState('')
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState(null)
+  const [searchParams] = useSearchParams()
+
+  // Pre-link customer if ?customer= is in the URL (e.g. from CustomerProfile "+ New Quote" button)
+  useEffect(() => {
+    const customerId = searchParams.get('customer')
+    if (!customerId) return
+    fetch(`/api/customers/${customerId}`, { credentials: 'include' })
+      .then(r => r.ok ? r.json() : null)
+      .then(c => {
+        if (!c) return
+        setFormFields(prev => ({
+          ...prev,
+          customer_id: c.id,
+          linked_customer: c,
+          customer_name: c.company_name,
+          customer_email: c.contact_email || '',
+        }))
+      })
+      .catch(() => {})
+  }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
   async function handleSubmitForm(e) {
     e.preventDefault()
@@ -44,16 +64,19 @@ export default function CreateQuote() {
     setSubmitting(true)
     setError(null)
     try {
+      const body = {
+        customerName: f.customer_name.trim(),
+        customerEmail: f.customer_email.trim(),
+        projectName: f.project_name.trim(),
+        intake_record: buildIntakeRecord(f),
+      }
+      if (f.customer_id) body.customer_id = f.customer_id
+
       const res = await fetch('/api/quotes', {
         method: 'POST',
         credentials: 'include',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          customerName: f.customer_name.trim(),
-          customerEmail: f.customer_email.trim(),
-          projectName: f.project_name.trim(),
-          intake_record: buildIntakeRecord(f),
-        }),
+        body: JSON.stringify(body),
       })
       const data = await res.json()
       if (!res.ok) throw new Error(data.error || 'Failed to create quote')
