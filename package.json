@@ -49,6 +49,7 @@
   "jest": {
     "testEnvironment": "node",
     "testMatch": ["**/server/__tests__/**/*.test.js", "**/server/routes/__tests__/**/*.test.js"],
-    "testPathIgnorePatterns": ["/node_modules/"]
+    "testPathIgnorePatterns": ["/node_modules/"],
+    "setupFiles": ["<rootDir>/server/__tests__/jest.env.setup.js"]
   }
 }
