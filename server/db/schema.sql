@@ -31,38 +31,6 @@ CREATE TABLE IF NOT EXISTS invitations (
   created_at TIMESTAMP    NOT NULL DEFAULT NOW()
 );
 
--- Quotes (schema only — fully populated in Plan B)
-CREATE TABLE IF NOT EXISTS quotes (
-  id                   VARCHAR(20)  PRIMARY KEY,
-  status               VARCHAR(20)  NOT NULL DEFAULT 'draft',
-  customer_name        VARCHAR(255),
-  customer_email       VARCHAR(255),
-  project_name         VARCHAR(255),
-  raw_input            TEXT,
-  intake_record        JSONB,
-  garment_data         JSONB,
-  pricing_osp          JSONB,
-  pricing_redwall      JSONB,
-  recommended_supplier VARCHAR(20),
-  qa_report            JSONB,
-  email_draft          TEXT,
-  gmail_draft_id       VARCHAR(255),
-  pdf_url              VARCHAR(500),
-  activity_log         JSONB        NOT NULL DEFAULT '[]',
-  created_at           TIMESTAMP    NOT NULL DEFAULT NOW(),
-  updated_at           TIMESTAMP    NOT NULL DEFAULT NOW(),
-  created_by           VARCHAR(255),     -- Stores user email/name (denormalized per PRD — not a FK)
-  selected_supplier    VARCHAR(20),
-  customer_id          INTEGER REFERENCES customers(id) ON DELETE SET NULL
-);
-
--- Indexes for common query patterns
-CREATE INDEX IF NOT EXISTS idx_quotes_status        ON quotes (status);
-CREATE INDEX IF NOT EXISTS idx_quotes_created_by    ON quotes (created_by);
-CREATE INDEX IF NOT EXISTS idx_quotes_customer_email ON quotes (customer_email);
-CREATE INDEX IF NOT EXISTS idx_quotes_created_at    ON quotes (created_at DESC);
-CREATE INDEX IF NOT EXISTS idx_invitations_email    ON invitations (email);
-
 -- Customers
 CREATE TABLE IF NOT EXISTS customers (
   id                   SERIAL        PRIMARY KEY,
@@ -95,6 +63,38 @@ CREATE TABLE IF NOT EXISTS customers (
 CREATE INDEX IF NOT EXISTS idx_customers_company_name  ON customers (company_name);
 CREATE INDEX IF NOT EXISTS idx_customers_account_id    ON customers (account_id);
 CREATE INDEX IF NOT EXISTS idx_customers_contact_email ON customers (contact_email);
+
+-- Quotes (schema only — fully populated in Plan B)
+CREATE TABLE IF NOT EXISTS quotes (
+  id                   VARCHAR(20)  PRIMARY KEY,
+  status               VARCHAR(20)  NOT NULL DEFAULT 'draft',
+  customer_name        VARCHAR(255),
+  customer_email       VARCHAR(255),
+  project_name         VARCHAR(255),
+  raw_input            TEXT,
+  intake_record        JSONB,
+  garment_data         JSONB,
+  pricing_osp          JSONB,
+  pricing_redwall      JSONB,
+  recommended_supplier VARCHAR(20),
+  qa_report            JSONB,
+  email_draft          TEXT,
+  gmail_draft_id       VARCHAR(255),
+  pdf_url              VARCHAR(500),
+  activity_log         JSONB        NOT NULL DEFAULT '[]',
+  created_at           TIMESTAMP    NOT NULL DEFAULT NOW(),
+  updated_at           TIMESTAMP    NOT NULL DEFAULT NOW(),
+  created_by           VARCHAR(255),     -- Stores user email/name (denormalized per PRD — not a FK)
+  selected_supplier    VARCHAR(20),
+  customer_id          INTEGER REFERENCES customers(id) ON DELETE SET NULL
+);
+
+-- Indexes for common query patterns
+CREATE INDEX IF NOT EXISTS idx_quotes_status        ON quotes (status);
+CREATE INDEX IF NOT EXISTS idx_quotes_created_by    ON quotes (created_by);
+CREATE INDEX IF NOT EXISTS idx_quotes_customer_email ON quotes (customer_email);
+CREATE INDEX IF NOT EXISTS idx_quotes_created_at    ON quotes (created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_invitations_email    ON invitations (email);
 
 -- Sequence for quote ID generation (atomic, concurrent-safe, deletion-safe)
 CREATE SEQUENCE IF NOT EXISTS quotes_seq START 1;
