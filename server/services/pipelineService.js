@@ -157,6 +157,7 @@ For size_breakdown: extract size quantities (e.g. "10 smalls, 20 mediums" → "S
       const locations = (prod.decoration?.locations || []).map(loc => ({
         colorCount: loc.color_count || loc.colorCount || 1,
         printSize: loc.print_size || loc.printSize || 'STANDARD',
+        inkColors: loc.ink_colors || loc.inkColors || [],
       }))
       const isDarkGarment = prod.edge_cases?.dark_garment || false
 

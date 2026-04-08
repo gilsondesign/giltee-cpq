@@ -1,5 +1,7 @@
 import { useEffect } from 'react'
 import CustomerPicker from './CustomerPicker'
+import InkColorSelect from './InkColorSelect'
+import { OSP_STOCK_COLORS } from '../constants/ospStockColors'
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 export const ADULT_SIZES = ['XS', 'S', 'M', 'L', 'XL', '2XL', '3XL', '4XL', '5XL']
@@ -49,6 +51,9 @@ export function normalizeIntakeRecord(ir) {
   }
 }
 
+// Fee per custom PMS color, keyed by manufacturer. Informational — server-side config is authoritative.
+const CUSTOM_PMS_FEE = { OSP: 20, REDWALL: 0 }
+
 // ─── Product field builders ───────────────────────────────────────────────────
 function productToFields(p, expanded = false) {
   const d = p.decoration || {}
@@ -62,11 +67,12 @@ function productToFields(p, expanded = false) {
     decoration_method: d.method || 'SCREEN_PRINT',
     locations: (d.locations?.length
       ? d.locations
-      : [{ name: 'Front chest', color_count: 1, print_size: 'STANDARD' }]
+      : [{ name: 'Front chest', color_count: 1, print_size: 'STANDARD', ink_colors: [] }]
     ).map(l => ({
       name: l.name || '',
       color_count: l.color_count ?? l.colorCount ?? 1,
       print_size: l.print_size || l.printSize || 'STANDARD',
+      ink_colors: l.ink_colors || l.inkColors || [],
     })),
     artwork_status: d.artwork_status || 'UNKNOWN',
     special_inks: (d.special_inks || []).join(', '),
@@ -158,7 +164,7 @@ function Check({ id, label, checked, onChange }) {
 }
 
 // ─── Product card ─────────────────────────────────────────────────────────────
-function ProductCard({ product, index, onChange, onRemove, canRemove }) {
+function ProductCard({ product, index, onChange, onRemove, canRemove, selectedSupplier }) {
   const expanded = product._expanded ?? true
 
   function set(key, val) {
@@ -320,6 +326,14 @@ function ProductCard({ product, index, onChange, onRemove, canRemove }) {
                     <option value="OVERSIZED">Oversized</option>
                     <option value="JUMBO">Jumbo</option>
                   </select>
+                  <div className="flex-1 min-w-[160px]">
+                    <InkColorSelect
+                      value={loc.ink_colors || []}
+                      onChange={inkColors => set('locations', product.locations.map((l, j) => j === li ? { ...l, ink_colors: inkColors } : l))}
+                      stockColors={selectedSupplier === 'OSP' ? OSP_STOCK_COLORS : null}
+                      customFee={CUSTOM_PMS_FEE[selectedSupplier] ?? 0}
+                    />
+                  </div>
                   {product.locations.length > 1 && (
                     <button type="button" onClick={() => set('locations', product.locations.filter((_, j) => j !== li))} className="text-on-surface-variant hover:text-error text-xs">✕</button>
                   )}
@@ -327,7 +341,7 @@ function ProductCard({ product, index, onChange, onRemove, canRemove }) {
               ))}
               <button
                 type="button"
-                onClick={() => set('locations', [...product.locations, { name: '', color_count: 1, print_size: 'STANDARD' }])}
+                onClick={() => set('locations', [...product.locations, { name: '', color_count: 1, print_size: 'STANDARD', ink_colors: [] }])}
                 className="text-xs text-primary hover:underline"
               >
                 + Add location
@@ -448,6 +462,7 @@ export default function QuoteForm({ fields, setFields }) {
               onChange={p => updateProduct(i, p)}
               onRemove={() => removeProduct(i)}
               canRemove={i > 0}
+              selectedSupplier={fields.selected_supplier}
             />
           ))}
         </div>

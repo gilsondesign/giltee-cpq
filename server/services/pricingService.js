@@ -163,7 +163,11 @@ function round2(n) {
  * @param {{
  *   quantity: number,
  *   garmentCostPerUnit: number,
- *   locations: Array<{ colorCount: number, printSize: 'STANDARD'|'OVERSIZED'|'JUMBO' }>,
+ *   locations: Array<{
+ *     colorCount: number,
+ *     printSize: 'STANDARD'|'OVERSIZED'|'JUMBO',
+ *     inkColors?: Array<{ name: string, custom: boolean }>
+ *   }>,
  *   isDarkGarment: boolean,
  *   isReorder: boolean,
  * }} params
@@ -212,11 +216,28 @@ async function calculateScreenPrintQuote({ quantity, garmentCostPerUnit, locatio
 
   const ospPerUnit = round2(garmentCostPerUnit + totalOspDecoration + perUnitProfit)
   const redwallPerUnit = round2(garmentCostPerUnit + totalRedwallDecoration + perUnitProfit)
-  const ospTotal = round2(ospPerUnit * quantity + ospSetupFee)
-  const redwallTotal = round2(redwallPerUnit * quantity + redwallSetupFee)
+
+  // ── Custom PMS ink fee ─────────────────────────────────────────────────────
+  const customPmsCount = locations.reduce((sum, loc) =>
+    sum + (loc.inkColors || []).filter(c => c.custom).length, 0)
+
+  const ospCustomPmsFee = round2(customPmsCount * ospFees.customPmsInk)
+  const redwallCustomPmsFee = round2(customPmsCount * redwallFees.customPmsInk)
+
+  const ospTotal = round2(ospPerUnit * quantity + ospSetupFee + ospCustomPmsFee)
+  const redwallTotal = round2(redwallPerUnit * quantity + redwallSetupFee + redwallCustomPmsFee)
 
   if (isDarkGarment) {
     flags.push('Dark garment: underbase added to color count for pricing.')
+  }
+
+  const ospFlags = [...flags]
+  const redwallFlags = [...flags]
+  if (ospCustomPmsFee > 0) {
+    ospFlags.push(`${customPmsCount} custom PMS color(s) (+$${ospCustomPmsFee.toFixed(2)})`)
+  }
+  if (redwallCustomPmsFee > 0) {
+    redwallFlags.push(`${customPmsCount} custom PMS color(s) (+$${redwallCustomPmsFee.toFixed(2)})`)
   }
 
   return {
@@ -225,18 +246,18 @@ async function calculateScreenPrintQuote({ quantity, garmentCostPerUnit, locatio
       perUnitDecoration: totalOspDecoration,
       perUnitProfit,
       perUnitTotal: ospPerUnit,
-      setupFees: { screenSetup: ospSetupFee },
+      setupFees: { screenSetup: ospSetupFee, customPmsInk: ospCustomPmsFee },
       orderTotal: ospTotal,
-      flags,
+      flags: ospFlags,
     },
     redwall: {
       perUnitGarment: garmentCostPerUnit,
       perUnitDecoration: totalRedwallDecoration,
       perUnitProfit,
       perUnitTotal: redwallPerUnit,
-      setupFees: { screenSetup: redwallSetupFee },
+      setupFees: { screenSetup: redwallSetupFee, customPmsInk: redwallCustomPmsFee },
       orderTotal: redwallTotal,
-      flags,
+      flags: redwallFlags,
     },
     recommended: ospTotal <= redwallTotal ? 'OSP' : 'REDWALL',
   }

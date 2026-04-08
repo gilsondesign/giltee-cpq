@@ -371,7 +371,24 @@ export default function ViewQuote() {
                       </div>
                     )}
                     <InfoRow label="Decoration" value={dec.method} />
-                    <InfoRow label="Locations" value={(dec.locations || []).map(l => `${l.name} (${l.color_count || l.colorCount || '?'}c)`).join(', ')} />
+                    <InfoRow
+                      label="Locations"
+                      value={(dec.locations || []).map((l, i) => {
+                        const inkNames = (l.ink_colors || l.inkColors || [])
+                        const stockNames = inkNames.filter(c => !c.custom).map(c => c.name)
+                        const customNames = inkNames.filter(c => c.custom).map(c => c.name)
+                        const colorStr = [
+                          ...stockNames,
+                          ...customNames.map(n => `${n} (custom)`),
+                        ].join(', ')
+                        return (
+                          <span key={i}>
+                            {i > 0 && <span className="text-on-surface-variant">, </span>}
+                            {l.name} ({l.color_count || l.colorCount || '?'}c{colorStr ? `: ${colorStr}` : ''})
+                          </span>
+                        )
+                      })}
+                    />
                     {ec.dark_garment && <InfoRow label="Dark garment" value="Yes" />}
                     {ec.individual_names && <InfoRow label="Individual names" value="Yes" />}
                     {ec.extended_sizes && <InfoRow label="Extended sizes" value="Yes (2XL+)" />}
