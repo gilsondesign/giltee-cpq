@@ -173,6 +173,7 @@ function Check({ id, label, checked, onChange }) {
 function ProductCard({ product, index, onChange, onRemove, canRemove, selectedSupplier }) {
   const expanded = product._expanded ?? true
   const [styleMismatchWarning, setStyleMismatchWarning] = useState(null)
+  const [showMiscPrint, setShowMiscPrint] = useState(false)
 
   useEffect(() => {
     const { brand_style, product_type, colors } = product
@@ -341,7 +342,6 @@ function ProductCard({ product, index, onChange, onRemove, canRemove, selectedSu
               {product.decoration_method === 'EMBROIDERY' && (
                 <Field label="Stitch count" type="number" value={product.stitch_count} onChange={v => set('stitch_count', v)} placeholder="e.g. 8000" />
               )}
-              <Field label="Special inks / effects" value={product.special_inks} onChange={v => set('special_inks', v)} placeholder="PMS, metallic (comma-separated)" />
             </div>
 
             {/* Print location details */}
@@ -402,6 +402,11 @@ function ProductCard({ product, index, onChange, onRemove, canRemove, selectedSu
                       <span className="text-xs text-on-surface-variant">Underbase</span>
                     </label>
                   </div>
+                  {li === 0 && (
+                    showMiscPrint
+                      ? <Field label="Special inks / effects" value={product.special_inks} onChange={v => set('special_inks', v)} placeholder="PMS, metallic (comma-separated)" />
+                      : <button type="button" onClick={() => setShowMiscPrint(true)} className="text-xs text-on-surface-variant hover:text-primary underline underline-offset-2 text-left">misc print details</button>
+                  )}
                 </div>
               ))}
               <button
