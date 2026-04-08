@@ -1,16 +1,22 @@
 // client/src/components/InkColorSelect.jsx
 import { useState, useRef, useEffect } from 'react'
+import { createPortal } from 'react-dom'
 
 export default function InkColorSelect({ value = [], onChange, stockColors = null, customFee = 0 }) {
   const [open, setOpen] = useState(false)
   const [search, setSearch] = useState('')
   const [showCustomEntry, setShowCustomEntry] = useState(false)
   const [customInput, setCustomInput] = useState('')
+  const [dropdownStyle, setDropdownStyle] = useState({})
   const ref = useRef(null)
+  const dropdownRef = useRef(null)
 
   useEffect(() => {
     function handleClick(e) {
-      if (ref.current && !ref.current.contains(e.target)) {
+      if (
+        ref.current && !ref.current.contains(e.target) &&
+        dropdownRef.current && !dropdownRef.current.contains(e.target)
+      ) {
         setOpen(false)
         setShowCustomEntry(false)
         setSearch('')
@@ -19,6 +25,19 @@ export default function InkColorSelect({ value = [], onChange, stockColors = nul
     document.addEventListener('mousedown', handleClick)
     return () => document.removeEventListener('mousedown', handleClick)
   }, [])
+
+  function openDropdown() {
+    if (!ref.current) return
+    const rect = ref.current.getBoundingClientRect()
+    setDropdownStyle({
+      position: 'fixed',
+      top: rect.bottom + 4,
+      left: rect.left,
+      width: Math.max(rect.width, 256),
+      zIndex: 9999,
+    })
+    setOpen(true)
+  }
 
   const filtered = (stockColors || []).filter(c =>
     c.name.toLowerCase().includes(search.toLowerCase())
@@ -51,8 +70,8 @@ export default function InkColorSelect({ value = [], onChange, stockColors = nul
       <div
         role="button"
         tabIndex={0}
-        onClick={() => setOpen(o => !o)}
-        onKeyDown={e => e.key === 'Enter' && setOpen(o => !o)}
+        onClick={() => open ? setOpen(false) : openDropdown()}
+        onKeyDown={e => e.key === 'Enter' && (open ? setOpen(false) : openDropdown())}
         className="flex flex-wrap gap-1 items-center min-h-[32px] text-sm bg-surface border border-outline-variant rounded px-2 py-1 cursor-pointer hover:border-primary/50"
       >
         {value.length === 0 && (
@@ -97,9 +116,9 @@ export default function InkColorSelect({ value = [], onChange, stockColors = nul
         </p>
       )}
 
-      {/* Dropdown */}
-      {open && (
-        <div className="absolute z-50 mt-1 w-64 bg-surface border border-outline-variant rounded shadow-xl">
+      {/* Dropdown — rendered via portal to escape overflow:hidden containers */}
+      {open && createPortal(
+        <div ref={dropdownRef} style={dropdownStyle} className="bg-surface border border-outline-variant rounded shadow-xl">
           {stockColors && stockColors.length > 0 && (
             <>
               <div className="p-2 border-b border-outline-variant/30">
@@ -173,7 +192,8 @@ export default function InkColorSelect({ value = [], onChange, stockColors = nul
               </div>
             )}
           </div>
-        </div>
+        </div>,
+        document.body
       )}
     </div>
   )
