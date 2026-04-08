@@ -1,4 +1,4 @@
-import { useEffect } from 'react'
+import React, { useEffect, useState } from 'react'
 import CustomerPicker from './CustomerPicker'
 import InkColorSelect from './InkColorSelect'
 import { OSP_STOCK_COLORS } from '../constants/ospStockColors'
@@ -6,6 +6,8 @@ import { OSP_STOCK_COLORS } from '../constants/ospStockColors'
 // ─── Constants ────────────────────────────────────────────────────────────────
 export const ADULT_SIZES = ['XS', 'S', 'M', 'L', 'XL', '2XL', '3XL', '4XL', '5XL']
 export const YOUTH_SIZES = ['YXS', 'YS', 'YM', 'YL', 'YXL']
+export const TODDLER_SIZES = ['2T', '4T', '6T']
+export const PRODUCT_TYPES = ['adult', 'youth', 'toddler', 'headwear']
 
 // ─── Size helpers ─────────────────────────────────────────────────────────────
 export function parseSizeBreakdown(breakdown) {
@@ -17,7 +19,7 @@ export function parseSizeBreakdown(breakdown) {
     const match = pair.match(/^([A-Z0-9]+)[:\-](\d+)$/i)
     if (match) {
       const key = match[1].toUpperCase()
-      if (key in result || YOUTH_SIZES.includes(key)) result[key] = match[2]
+      if (key in result || YOUTH_SIZES.includes(key) || TODDLER_SIZES.includes(key)) result[key] = match[2]
     }
   })
   return result
@@ -58,12 +60,14 @@ const CUSTOM_PMS_FEE = { OSP: 20, REDWALL: 0 }
 function productToFields(p, expanded = false) {
   const d = p.decoration || {}
   const e = p.edge_cases || {}
+  // Backwards compat: old records have youth_sizes: true instead of product_type
+  const product_type = p.product_type || (p.youth_sizes ? 'youth' : 'adult')
   return {
+    product_type,
     brand_style: p.brand_style || '',
     quantity: p.quantity != null ? String(p.quantity) : '',
     colors: (p.colors || []).join(', '),
     sizes: parseSizeBreakdown(p.size_breakdown),
-    youth_sizes: p.youth_sizes || false,
     decoration_method: d.method || 'SCREEN_PRINT',
     locations: (d.locations?.length
       ? d.locations
@@ -89,12 +93,13 @@ export function buildEmptyProduct({ expanded = true } = {}) {
 }
 
 export function serializeProduct(p) {
+  const isHeadwear = p.product_type === 'headwear'
   return {
+    product_type: p.product_type || 'adult',
     brand_style: p.brand_style || null,
     quantity: p.quantity ? parseInt(p.quantity, 10) : null,
     colors: p.colors ? p.colors.split(',').map(s => s.trim()).filter(Boolean) : [],
-    size_breakdown: serializeSizeBreakdown(p.sizes),
-    youth_sizes: p.youth_sizes || false,
+    size_breakdown: isHeadwear ? null : serializeSizeBreakdown(p.sizes),
     decoration: {
       method: p.decoration_method || null,
       locations: p.locations.filter(l => l.name),
@@ -166,6 +171,41 @@ function Check({ id, label, checked, onChange }) {
 // ─── Product card ─────────────────────────────────────────────────────────────
 function ProductCard({ product, index, onChange, onRemove, canRemove, selectedSupplier }) {
   const expanded = product._expanded ?? true
+  const [styleMismatchWarning, setStyleMismatchWarning] = useState(null)
+
+  useEffect(() => {
+    const { brand_style, product_type, colors } = product
+    if (!brand_style || (product_type !== 'youth' && product_type !== 'toddler')) {
+      setStyleMismatchWarning(null)
+      return
+    }
+    const controller = new AbortController()
+    const color = colors ? colors.split(',')[0].trim() : ''
+    fetch(
+      `/api/garments/lookup?style=${encodeURIComponent(brand_style)}&color=${encodeURIComponent(color)}`,
+      { signal: controller.signal }
+    )
+      .then(r => r.ok ? r.json() : null)
+      .then(data => {
+        if (!data || !Array.isArray(data.skus)) {
+          setStyleMismatchWarning(null)
+          return
+        }
+        const youthSizes = ['YXS', 'YS', 'YM', 'YL', 'YXL']
+        const toddlerSizes = ['2T', '4T', '6T']
+        const targetSizes = product_type === 'toddler' ? toddlerSizes : youthSizes
+        const hasMatch = data.skus.some(sku => targetSizes.includes(sku.size))
+        setStyleMismatchWarning(hasMatch ? null :
+          product_type === 'toddler'
+            ? 'Toddler sizes require a toddler garment style. Update the style or change the product type.'
+            : 'Youth sizes require a youth garment style (e.g. 3001YCVC). Update the style or change the product type.'
+        )
+      })
+      .catch(err => {
+        if (err.name !== 'AbortError') setStyleMismatchWarning(null)
+      })
+    return () => controller.abort()
+  }, [product.brand_style, product.product_type, product.colors]) // eslint-disable-line react-hooks/exhaustive-deps
 
   function set(key, val) {
     onChange({ ...product, [key]: val })
@@ -173,6 +213,10 @@ function ProductCard({ product, index, onChange, onRemove, canRemove, selectedSu
   function toggle() {
     onChange({ ...product, _expanded: !expanded })
   }
+
+  const currentSizes = product.product_type === 'youth' ? YOUTH_SIZES
+    : product.product_type === 'toddler' ? TODDLER_SIZES
+    : ADULT_SIZES
 
   const summary = [
     product.brand_style,
@@ -219,33 +263,38 @@ function ProductCard({ product, index, onChange, onRemove, canRemove, selectedSu
               <Field label="Quantity" type="number" value={product.quantity} onChange={v => set('quantity', v)} placeholder="e.g. 60" />
               <Field label="Colors" value={product.colors} onChange={v => set('colors', v)} placeholder="Navy, White (comma-separated)" className="col-span-2" />
             </div>
+            {styleMismatchWarning && (
+              <p role="alert" className="text-sm text-red-600 mt-1">{styleMismatchWarning}</p>
+            )}
+
+            {/* Product type selector */}
+            <div className="flex gap-3 py-2 items-center border-b border-outline-variant/20 mt-3">
+              <label htmlFor={`type-${index}`} className="text-xs text-on-surface-variant w-28 shrink-0">Product Type</label>
+              <select
+                id={`type-${index}`}
+                value={product.product_type || 'adult'}
+                onChange={e => onChange({ ...product, product_type: e.target.value, sizes: {} })}
+                className="flex-1 text-sm bg-surface border border-outline-variant rounded px-2 py-1.5 text-on-surface focus:outline-none focus:ring-1 focus:ring-primary"
+              >
+                <option value="adult">Adult</option>
+                <option value="youth">Youth</option>
+                <option value="toddler">Toddler</option>
+                <option value="headwear">Headwear</option>
+              </select>
+            </div>
 
             {/* Size grid */}
-            <div className="border-b border-outline-variant/20 pb-3 mt-3">
-              <p className="text-xs text-on-surface-variant mb-2">Size breakdown <span className="text-on-surface-variant/60">(qty per size)</span></p>
-              <div className="flex flex-wrap gap-2">
-                {ADULT_SIZES.map(size => (
-                  <div key={size} className="flex flex-col items-center gap-1">
-                    <span className={`text-xs font-medium ${['2XL', '3XL', '4XL', '5XL'].includes(size) ? 'text-secondary' : 'text-on-surface-variant'}`}>{size}</span>
-                    <input
-                      type="number" min="0"
-                      value={product.sizes[size] || ''}
-                      onChange={e => set('sizes', { ...product.sizes, [size]: e.target.value })}
-                      className="w-14 text-sm text-center bg-surface border border-outline-variant rounded px-1 py-1 text-on-surface focus:outline-none focus:ring-1 focus:ring-primary"
-                      placeholder="0"
-                    />
-                  </div>
-                ))}
-              </div>
-              {product.youth_sizes && (
-                <div className="flex flex-wrap gap-2 mt-3">
-                  <p className="w-full text-xs text-on-surface-variant mb-1">Youth sizes</p>
-                  {YOUTH_SIZES.map(size => (
+            {product.product_type !== 'headwear' && (
+              <div className="border-b border-outline-variant/20 pb-3 mt-3">
+                <p className="text-xs text-on-surface-variant mb-2">Size breakdown <span className="text-on-surface-variant/60">(qty per size)</span></p>
+                <div className="flex flex-wrap gap-2">
+                  {currentSizes.map(size => (
                     <div key={size} className="flex flex-col items-center gap-1">
-                      <span className="text-xs font-medium text-on-surface-variant">{size}</span>
+                      <span className={`text-xs font-medium ${['2XL', '3XL', '4XL', '5XL'].includes(size) ? 'text-secondary' : 'text-on-surface-variant'}`}>{size}</span>
                       <input
                         type="number" min="0"
-                        value={product.sizes[size] || ''}
+                        title={`${size} size quantity`}
+                        value={product.sizes?.[size] || ''}
                         onChange={e => set('sizes', { ...product.sizes, [size]: e.target.value })}
                         className="w-14 text-sm text-center bg-surface border border-outline-variant rounded px-1 py-1 text-on-surface focus:outline-none focus:ring-1 focus:ring-primary"
                         placeholder="0"
@@ -253,12 +302,8 @@ function ProductCard({ product, index, onChange, onRemove, canRemove, selectedSu
                     </div>
                   ))}
                 </div>
-              )}
-            </div>
-            <div className="flex items-center gap-2 mt-2">
-              <input type="checkbox" id={`youth-${index}`} checked={!!product.youth_sizes} onChange={e => set('youth_sizes', e.target.checked)} className="w-4 h-4 accent-primary" />
-              <label htmlFor={`youth-${index}`} className="text-xs text-on-surface-variant cursor-pointer">Include youth sizes</label>
-            </div>
+              </div>
+            )}
           </div>
 
           {/* Decoration */}

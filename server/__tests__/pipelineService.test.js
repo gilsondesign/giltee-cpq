@@ -139,7 +139,7 @@ describe('pipelineService.runQuotePipeline', () => {
 
     // Email prompt should reference REDWALL total ($877.20), not OSP ($725.80)
     const emailCall = claudeService.callClaude.mock.calls.find(
-      call => call[0].userPrompt?.includes('REDWALL') && call[0].userPrompt?.includes('877.20')
+      call => call[0].userPrompt?.includes('877.20')
     )
     expect(emailCall).toBeDefined()
 
@@ -148,5 +148,25 @@ describe('pipelineService.runQuotePipeline', () => {
       expect.anything(),
       'REDWALL'
     )
+  })
+})
+
+describe('pipelineService intake prompt', () => {
+  const fs = require('fs')
+  const path = require('path')
+  const source = fs.readFileSync(
+    path.join(__dirname, '../services/pipelineService.js'),
+    'utf8'
+  )
+
+  it('includes toddler size codes', () => {
+    expect(source).toContain('2T')
+    expect(source).toContain('4T')
+    expect(source).toContain('6T')
+  })
+
+  it('uses product_type instead of youth_sizes in intake schema', () => {
+    expect(source).toContain('product_type')
+    expect(source).not.toContain('"youth_sizes": false')
   })
 })

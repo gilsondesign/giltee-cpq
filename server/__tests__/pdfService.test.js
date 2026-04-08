@@ -53,6 +53,28 @@ describe('pdfService.generateQuotePDF', () => {
   })
 })
 
+describe('pdfService product type logic — source', () => {
+  const fs = require('fs')
+  const path = require('path')
+  const source = fs.readFileSync(path.join(__dirname, '../services/pdfService.js'), 'utf8')
+
+  it('references product_type field', () => {
+    expect(source).toContain('product_type')
+  })
+
+  it('does not contain the old "Youth Sizes" label', () => {
+    expect(source).not.toContain('Youth Sizes')
+  })
+
+  it('does not contain the old "youth_sizes: Yes" string', () => {
+    expect(source).not.toContain('youth_sizes: Yes')
+  })
+
+  it('contains the "Product Type" label', () => {
+    expect(source).toContain('Product Type')
+  })
+})
+
 describe('pdfService.generateQuotePDF — supplier override', () => {
   it('uses OSP pricing when supplier is OSP', async () => {
     // recommended is OSP, so this just confirms default behavior
