@@ -373,7 +373,7 @@ function ProductCard({ product, index, onChange, onRemove, canRemove, selectedSu
                   <select
                     value={loc.print_size}
                     onChange={e => set('locations', product.locations.map((l, j) => j === li ? { ...l, print_size: e.target.value } : l))}
-                    className="text-xs bg-surface border border-outline-variant rounded px-1 py-0.5 text-on-surface focus:outline-none"
+                    className="text-sm bg-surface border border-outline-variant rounded px-2 py-1.5 text-on-surface focus:outline-none focus:ring-1 focus:ring-primary"
                   >
                     <option value="STANDARD">Standard</option>
                     <option value="OVERSIZED">Oversized</option>
