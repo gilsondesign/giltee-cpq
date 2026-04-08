@@ -362,6 +362,14 @@ function ProductCard({ product, index, onChange, onRemove, canRemove, selectedSu
                     title="Ink colors"
                   />
                   <span className="text-xs text-on-surface-variant">colors</span>
+                  <div className="flex-1 min-w-[160px]">
+                    <InkColorSelect
+                      value={loc.ink_colors || []}
+                      onChange={inkColors => set('locations', product.locations.map((l, j) => j === li ? { ...l, ink_colors: inkColors } : l))}
+                      stockColors={selectedSupplier === 'OSP' ? OSP_STOCK_COLORS : null}
+                      customFee={CUSTOM_PMS_FEE[selectedSupplier] ?? 0}
+                    />
+                  </div>
                   <select
                     value={loc.print_size}
                     onChange={e => set('locations', product.locations.map((l, j) => j === li ? { ...l, print_size: e.target.value } : l))}
@@ -371,14 +379,6 @@ function ProductCard({ product, index, onChange, onRemove, canRemove, selectedSu
                     <option value="OVERSIZED">Oversized</option>
                     <option value="JUMBO">Jumbo</option>
                   </select>
-                  <div className="flex-1 min-w-[160px]">
-                    <InkColorSelect
-                      value={loc.ink_colors || []}
-                      onChange={inkColors => set('locations', product.locations.map((l, j) => j === li ? { ...l, ink_colors: inkColors } : l))}
-                      stockColors={selectedSupplier === 'OSP' ? OSP_STOCK_COLORS : null}
-                      customFee={CUSTOM_PMS_FEE[selectedSupplier] ?? 0}
-                    />
-                  </div>
                   {product.locations.length > 1 && (
                     <button type="button" onClick={() => set('locations', product.locations.filter((_, j) => j !== li))} className="text-on-surface-variant hover:text-error text-xs">✕</button>
                   )}
