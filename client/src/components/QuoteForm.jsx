@@ -71,12 +71,13 @@ function productToFields(p, expanded = false) {
     decoration_method: d.method || 'SCREEN_PRINT',
     locations: (d.locations?.length
       ? d.locations
-      : [{ name: 'Front chest', color_count: 1, print_size: 'STANDARD', ink_colors: [] }]
+      : [{ name: 'left chest', color_count: 1, print_size: 'STANDARD', ink_colors: [] }]
     ).map(l => ({
       name: l.name || '',
       color_count: l.color_count ?? l.colorCount ?? 1,
       print_size: l.print_size || l.printSize || 'STANDARD',
       ink_colors: l.ink_colors || l.inkColors || [],
+      underbase: l.underbase || false,
     })),
     artwork_status: d.artwork_status || 'UNKNOWN',
     special_inks: (d.special_inks || []).join(', '),
@@ -102,7 +103,7 @@ export function serializeProduct(p) {
     size_breakdown: isHeadwear ? null : serializeSizeBreakdown(p.sizes),
     decoration: {
       method: p.decoration_method || null,
-      locations: p.locations.filter(l => l.name),
+      locations: p.locations.filter(l => l.name).map(l => ({ ...l, underbase: l.underbase || false })),
       artwork_status: p.artwork_status || 'UNKNOWN',
       special_inks: p.special_inks ? p.special_inks.split(',').map(s => s.trim()).filter(Boolean) : [],
       stitch_count: p.stitch_count ? parseInt(p.stitch_count, 10) : null,
@@ -343,50 +344,69 @@ function ProductCard({ product, index, onChange, onRemove, canRemove, selectedSu
               <Field label="Special inks / effects" value={product.special_inks} onChange={v => set('special_inks', v)} placeholder="PMS, metallic (comma-separated)" />
             </div>
 
-            {/* Print locations */}
-            <p className="text-xs text-on-surface-variant mb-2">Print locations</p>
-            <div className="space-y-2">
+            {/* Print location details */}
+            <p className="text-xs text-on-surface-variant mb-2">Print location details</p>
+            <div className="space-y-3">
               {product.locations.map((loc, li) => (
-                <div key={li} className="flex gap-2 items-center bg-surface rounded px-3 py-2">
-                  <input
-                    value={loc.name}
-                    onChange={e => set('locations', product.locations.map((l, j) => j === li ? { ...l, name: e.target.value } : l))}
-                    placeholder="Location (e.g. Front chest)"
-                    className="flex-1 text-sm bg-transparent text-on-surface placeholder:text-on-surface-variant focus:outline-none"
-                  />
-                  <input
-                    type="number" min="1" max="12"
-                    value={loc.color_count}
-                    onChange={e => set('locations', product.locations.map((l, j) => j === li ? { ...l, color_count: parseInt(e.target.value) || 1 } : l))}
-                    className="w-14 text-sm text-center bg-transparent border border-outline-variant rounded px-1 py-0.5 focus:outline-none focus:ring-1 focus:ring-primary"
-                    title="Ink colors"
-                  />
-                  <span className="text-xs text-on-surface-variant">colors</span>
-                  <div className="flex-1 min-w-[160px]">
-                    <InkColorSelect
-                      value={loc.ink_colors || []}
-                      onChange={inkColors => set('locations', product.locations.map((l, j) => j === li ? { ...l, ink_colors: inkColors } : l))}
-                      stockColors={selectedSupplier === 'OSP' ? OSP_STOCK_COLORS : null}
-                      customFee={CUSTOM_PMS_FEE[selectedSupplier] ?? 0}
+                <div key={li} className="bg-surface rounded border border-outline-variant/30 p-3 space-y-2">
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs text-on-surface-variant w-16 shrink-0">Location</span>
+                    <select
+                      value={loc.name}
+                      onChange={e => set('locations', product.locations.map((l, j) => j === li ? { ...l, name: e.target.value } : l))}
+                      className="flex-1 text-sm bg-surface border border-outline-variant rounded px-2 py-1.5 text-on-surface focus:outline-none focus:ring-1 focus:ring-primary"
+                    >
+                      <option value="left chest">Left Chest</option>
+                      <option value="right chest">Right Chest</option>
+                      <option value="center chest">Center Chest</option>
+                      <option value="full front">Full Front</option>
+                      <option value="full back">Full Back</option>
+                      <option value="left sleeve">Left Sleeve</option>
+                      <option value="right sleeve">Right Sleeve</option>
+                      <option value="other">Other</option>
+                    </select>
+                    {product.locations.length > 1 && (
+                      <button type="button" onClick={() => set('locations', product.locations.filter((_, j) => j !== li))} className="text-on-surface-variant hover:text-error text-xs ml-1">✕</button>
+                    )}
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs text-on-surface-variant w-16 shrink-0"># of colors</span>
+                    <input
+                      type="number" min="1" max="12"
+                      value={loc.color_count}
+                      onChange={e => set('locations', product.locations.map((l, j) => j === li ? { ...l, color_count: parseInt(e.target.value) || 1 } : l))}
+                      className="w-20 text-sm text-center bg-surface border border-outline-variant rounded px-2 py-1.5 text-on-surface focus:outline-none focus:ring-1 focus:ring-primary"
+                      title="Number of ink colors"
                     />
                   </div>
-                  <select
-                    value={loc.print_size}
-                    onChange={e => set('locations', product.locations.map((l, j) => j === li ? { ...l, print_size: e.target.value } : l))}
-                    className="text-sm bg-surface border border-outline-variant rounded px-2 py-1.5 text-on-surface focus:outline-none focus:ring-1 focus:ring-primary"
-                  >
-                    <option value="STANDARD">Standard</option>
-                    <option value="OVERSIZED">Oversized</option>
-                    <option value="JUMBO">Jumbo</option>
-                  </select>
-                  {product.locations.length > 1 && (
-                    <button type="button" onClick={() => set('locations', product.locations.filter((_, j) => j !== li))} className="text-on-surface-variant hover:text-error text-xs">✕</button>
-                  )}
+                  <div className="flex items-start gap-2">
+                    <span className="text-xs text-on-surface-variant w-16 shrink-0 pt-1.5">Colors</span>
+                    <div className="flex-1">
+                      <InkColorSelect
+                        value={loc.ink_colors || []}
+                        onChange={inkColors => set('locations', product.locations.map((l, j) => j === li ? { ...l, ink_colors: inkColors } : l))}
+                        stockColors={selectedSupplier === 'OSP' ? OSP_STOCK_COLORS : null}
+                        customFee={CUSTOM_PMS_FEE[selectedSupplier] ?? 0}
+                      />
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs text-on-surface-variant w-16 shrink-0" />
+                    <label className="flex items-center gap-2 cursor-pointer">
+                      <input
+                        type="checkbox"
+                        checked={!!loc.underbase}
+                        onChange={e => set('locations', product.locations.map((l, j) => j === li ? { ...l, underbase: e.target.checked } : l))}
+                        className="w-4 h-4 accent-primary"
+                      />
+                      <span className="text-xs text-on-surface-variant">Underbase</span>
+                    </label>
+                  </div>
                 </div>
               ))}
               <button
                 type="button"
-                onClick={() => set('locations', [...product.locations, { name: '', color_count: 1, print_size: 'STANDARD', ink_colors: [] }])}
+                onClick={() => set('locations', [...product.locations, { name: 'left chest', color_count: 1, print_size: 'STANDARD', ink_colors: [] }])}
                 className="text-xs text-primary hover:underline"
               >
                 + Add location
