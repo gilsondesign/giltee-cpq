@@ -119,6 +119,27 @@ export default function InkColorSelect({ value = [], onChange, stockColors = nul
       {/* Dropdown — rendered via portal to escape overflow:hidden containers */}
       {open && createPortal(
         <div ref={dropdownRef} style={dropdownStyle} className="bg-surface border border-outline-variant rounded shadow-xl">
+          {/* Underbase option — always shown first */}
+          {(() => {
+            const selected = value.some(v => v.name === 'Underbase')
+            return (
+              <button
+                type="button"
+                onClick={() => toggleStock({ name: 'Underbase', hex: '#ffffff' })}
+                className={`w-full flex items-center gap-2 px-3 py-1.5 text-xs text-left border-b border-outline-variant/30 hover:bg-surface-container ${
+                  selected ? 'text-primary' : 'text-on-surface'
+                }`}
+              >
+                <span
+                  className="w-4 h-4 rounded-sm border border-outline-variant flex-shrink-0"
+                  style={{ background: '#ffffff' }}
+                />
+                <span className="flex-1">Underbase</span>
+                {selected && <span className="text-primary text-[10px]">✓</span>}
+              </button>
+            )
+          })()}
+
           {stockColors && stockColors.length > 0 && (
             <>
               <div className="p-2 border-b border-outline-variant/30">

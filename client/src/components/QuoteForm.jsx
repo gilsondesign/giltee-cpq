@@ -77,7 +77,6 @@ function productToFields(p, expanded = false) {
       color_count: l.color_count ?? l.colorCount ?? 1,
       print_size: l.print_size || l.printSize || 'STANDARD',
       ink_colors: l.ink_colors || l.inkColors || [],
-      underbase: l.underbase || false,
     })),
     artwork_status: d.artwork_status || 'UNKNOWN',
     special_inks: (d.special_inks || []).join(', '),
@@ -103,7 +102,7 @@ export function serializeProduct(p) {
     size_breakdown: isHeadwear ? null : serializeSizeBreakdown(p.sizes),
     decoration: {
       method: p.decoration_method || null,
-      locations: p.locations.filter(l => l.name).map(l => ({ ...l, underbase: l.underbase || false })),
+      locations: p.locations.filter(l => l.name),
       artwork_status: p.artwork_status || 'UNKNOWN',
       special_inks: p.special_inks ? p.special_inks.split(',').map(s => s.trim()).filter(Boolean) : [],
       stitch_count: p.stitch_count ? parseInt(p.stitch_count, 10) : null,
@@ -390,22 +389,9 @@ function ProductCard({ product, index, onChange, onRemove, canRemove, selectedSu
                       />
                     </div>
                   </div>
-                  <div className="flex items-center gap-2">
-                    <span className="text-xs text-on-surface-variant w-16 shrink-0" />
-                    <label className="flex items-center gap-2 cursor-pointer">
-                      <input
-                        type="checkbox"
-                        checked={!!loc.underbase}
-                        onChange={e => set('locations', product.locations.map((l, j) => j === li ? { ...l, underbase: e.target.checked } : l))}
-                        className="w-4 h-4 accent-primary"
-                      />
-                      <span className="text-xs text-on-surface-variant">Underbase</span>
-                    </label>
-                  </div>
-                  {li === 0 && (
-                    showMiscPrint
-                      ? <Field label="Special inks / effects" value={product.special_inks} onChange={v => set('special_inks', v)} placeholder="PMS, metallic (comma-separated)" />
-                      : <button type="button" onClick={() => setShowMiscPrint(true)} className="text-xs text-on-surface-variant hover:text-primary underline underline-offset-2 text-left">misc print details</button>
+                  {li === 0 && (showMiscPrint
+                    ? <Field label="Special inks / effects" value={product.special_inks} onChange={v => set('special_inks', v)} placeholder="PMS, metallic (comma-separated)" />
+                    : <button type="button" onClick={() => setShowMiscPrint(true)} className="text-xs text-on-surface-variant hover:text-primary underline underline-offset-2 text-left">misc print details</button>
                   )}
                 </div>
               ))}
