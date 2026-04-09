@@ -156,7 +156,7 @@ describe('ViewQuote — draft', () => {
 describe('ViewQuote — ready', () => {
   it('shows pricing totals', async () => {
     renderViewQuote(MOCK_QUOTE_READY)
-    await waitFor(() => expect(screen.getByText('$725.80')).toBeInTheDocument())
+    await waitFor(() => expect(screen.getAllByText('$490.00').length).toBeGreaterThan(0))
   })
 
   it('shows QA status', async () => {
@@ -189,27 +189,24 @@ describe('ViewQuote — ready', () => {
 })
 
 describe('ViewQuote — manufacturer selection', () => {
-  it('shows Selected badge on the overridden supplier when selected_supplier differs from recommended', async () => {
+  it('shows Redwall decoration cost label when selected_supplier is REDWALL', async () => {
     const quoteWithOverride = {
       ...MOCK_QUOTE_READY,
       recommended_supplier: 'OSP',
       selected_supplier: 'REDWALL',
     }
     renderViewQuote(quoteWithOverride)
-    await waitFor(() => expect(screen.getByText('$877.20')).toBeInTheDocument())
-    expect(screen.getByText('Selected')).toBeInTheDocument()
-    expect(screen.getByText('Recommended')).toBeInTheDocument()
+    await waitFor(() => expect(screen.getByText(/Decoration Cost \(Redwall\)/)).toBeInTheDocument())
   })
 
-  it('does not show Selected badge when selected_supplier matches recommended', async () => {
+  it('shows OSP decoration cost label when selected_supplier matches recommended', async () => {
     const quoteNoOverride = {
       ...MOCK_QUOTE_READY,
       recommended_supplier: 'OSP',
       selected_supplier: 'OSP',
     }
     renderViewQuote(quoteNoOverride)
-    await waitFor(() => expect(screen.getByText('$725.80')).toBeInTheDocument())
-    expect(screen.queryByText('Selected')).not.toBeInTheDocument()
+    await waitFor(() => expect(screen.getByText(/Decoration Cost \(OSP\)/)).toBeInTheDocument())
   })
 
   it('shows manufacturer radios in edit panel for screen print quote', async () => {
@@ -231,7 +228,7 @@ describe('pricing breakdown', () => {
 
   it('shows Decoration Cost row', async () => {
     renderViewQuote(MOCK_QUOTE_READY)
-    await waitFor(() => expect(screen.getByText('Decoration Cost')).toBeInTheDocument())
+    await waitFor(() => expect(screen.getByText(/Decoration Cost/)).toBeInTheDocument())
   })
 
   it('shows Giltee Profit row', async () => {

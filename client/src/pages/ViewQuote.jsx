@@ -466,50 +466,52 @@ export default function ViewQuote() {
           <>
             <SectionLabel>Profit Margin</SectionLabel>
             <div className="bg-surface-container-low rounded p-4 mb-3">
-              {/* Segmented toggle */}
-              <div className="flex rounded overflow-hidden border border-outline-variant w-fit mb-3">
-                {[
-                  { key: 'per_shirt', label: '$ per Shirt' },
-                  { key: 'percent', label: '% of Cost' },
-                  { key: 'fixed_total', label: '$ Total' },
-                ].map(({ key, label }) => (
-                  <button
-                    key={key}
-                    type="button"
-                    onClick={() => {
-                      setProfitMode(key)
-                      setProfitValue('0')
-                      saveProfitSettings(key, 0)
-                    }}
-                    className={`px-4 py-1.5 text-xs font-medium transition-colors ${
-                      profitMode === key
-                        ? 'bg-primary text-on-primary'
-                        : 'bg-surface text-on-surface-variant hover:bg-surface-container'
-                    }`}
-                  >
-                    {label}
-                  </button>
-                ))}
-              </div>
-              {/* Value input */}
-              <div className="flex items-center gap-2">
-                <span className="text-xs text-on-surface-variant w-6">
-                  {profitMode === 'percent' ? '%' : '$'}
-                </span>
-                <input
-                  id="profit-value"
-                  aria-label="Profit value"
-                  type="number"
-                  min="0"
-                  step="0.01"
-                  value={profitValue}
-                  onChange={e => setProfitValue(e.target.value)}
-                  onBlur={e => saveProfitSettings(profitMode, e.target.value)}
-                  className="w-28 text-sm bg-surface border border-outline-variant rounded px-3 py-1.5 text-on-surface focus:outline-none focus:ring-1 focus:ring-primary"
-                />
-                <span className="text-xs text-on-surface-variant">
-                  {profitMode === 'per_shirt' ? 'per shirt' : profitMode === 'percent' ? 'of cost' : 'total profit'}
-                </span>
+              <div className="flex items-center gap-3 flex-wrap">
+                {/* Segmented toggle */}
+                <div className="flex rounded overflow-hidden border border-outline-variant w-fit">
+                  {[
+                    { key: 'per_shirt', label: '$ per Shirt' },
+                    { key: 'percent', label: '% of Cost' },
+                    { key: 'fixed_total', label: '$ Total' },
+                  ].map(({ key, label }) => (
+                    <button
+                      key={key}
+                      type="button"
+                      onClick={() => {
+                        setProfitMode(key)
+                        setProfitValue('0')
+                        saveProfitSettings(key, 0)
+                      }}
+                      className={`px-4 py-1.5 text-xs font-medium transition-colors ${
+                        profitMode === key
+                          ? 'bg-primary text-on-primary'
+                          : 'bg-surface text-on-surface-variant hover:bg-surface-container'
+                      }`}
+                    >
+                      {label}
+                    </button>
+                  ))}
+                </div>
+                {/* Value input */}
+                <div className="flex items-center gap-2">
+                  <span className="text-xs text-on-surface-variant">
+                    {profitMode === 'percent' ? '%' : '$'}
+                  </span>
+                  <input
+                    id="profit-value"
+                    aria-label="Profit value"
+                    type="number"
+                    min="0"
+                    step="0.01"
+                    value={profitValue}
+                    onChange={e => setProfitValue(e.target.value)}
+                    onBlur={e => saveProfitSettings(profitMode, e.target.value)}
+                    className="w-24 text-sm bg-surface border border-outline-variant rounded px-3 py-1.5 text-on-surface focus:outline-none focus:ring-1 focus:ring-primary"
+                  />
+                  <span className="text-xs text-on-surface-variant">
+                    {profitMode === 'per_shirt' ? 'per shirt' : profitMode === 'percent' ? 'of cost' : 'total profit'}
+                  </span>
+                </div>
               </div>
             </div>
           </>
@@ -551,7 +553,7 @@ export default function ViewQuote() {
                         <span className="text-on-surface">{formatCurrency(garment)}<span className="text-xs text-on-surface-variant">/unit</span></span>
                       </div>
                       <div className="flex justify-between">
-                        <span className="text-on-surface-variant">Decoration Cost</span>
+                        <span className="text-on-surface-variant">Decoration Cost ({activeSupplier === 'REDWALL' ? 'Redwall' : 'OSP'})</span>
                         <span className="text-on-surface">{formatCurrency(decoration)}<span className="text-xs text-on-surface-variant">/unit</span></span>
                       </div>
                       <div className="flex justify-between">
@@ -575,61 +577,6 @@ export default function ViewQuote() {
                 <span className="text-base font-bold text-on-surface">{formatCurrency(grandTotal)}</span>
               </div>
             </div>
-            <div className="grid grid-cols-2 gap-3">
-              {/* OSP */}
-              <div className={`rounded p-4 border-2 ${quote.recommended_supplier === 'OSP' ? 'border-primary bg-surface-container-low' : 'border-transparent bg-surface-container-low'}`}>
-                <div className="flex items-center justify-between mb-2">
-                  <p className="text-xs font-bold text-on-surface-variant uppercase">OSP</p>
-                  <div className="flex items-center gap-1.5">
-                    {quote.recommended_supplier === 'OSP' && (
-                      <span className="text-xs bg-secondary-fixed text-primary px-2 py-0.5 rounded font-medium">Recommended</span>
-                    )}
-                    {quote.selected_supplier === 'OSP' && quote.selected_supplier !== quote.recommended_supplier && (
-                      <span className="text-xs bg-primary text-on-primary px-2 py-0.5 rounded font-medium">Selected</span>
-                    )}
-                  </div>
-                </div>
-                <p className="text-2xl font-bold text-on-surface">
-                  {formatCurrency(ospArr.reduce((s, p) => s + (p?.orderTotal || 0), 0))}
-                </p>
-                <p className="text-xs text-on-surface-variant mt-1">
-                  {ospArr.length === 1
-                    ? `${formatCurrency(osp.perUnitTotal)}/unit${osp.setupFees?.screenSetup > 0 ? ` + ${formatCurrency(osp.setupFees.screenSetup)} setup` : ' (setup waived)'}`
-                    : `${ospArr.length} products`}
-                </p>
-              </div>
-              {/* Redwall */}
-              {rwArr.some(p => p?.orderTotal != null) && (
-                <div className={`rounded p-4 border-2 ${quote.recommended_supplier === 'REDWALL' ? 'border-primary bg-surface-container-low' : 'border-transparent bg-surface-container-low'}`}>
-                  <div className="flex items-center justify-between mb-2">
-                    <p className="text-xs font-bold text-on-surface-variant uppercase">Redwall</p>
-                    <div className="flex items-center gap-1.5">
-                      {quote.recommended_supplier === 'REDWALL' && (
-                        <span className="text-xs bg-secondary-fixed text-primary px-2 py-0.5 rounded font-medium">Recommended</span>
-                      )}
-                      {quote.selected_supplier === 'REDWALL' && quote.selected_supplier !== quote.recommended_supplier && (
-                        <span className="text-xs bg-primary text-on-primary px-2 py-0.5 rounded font-medium">Selected</span>
-                      )}
-                    </div>
-                  </div>
-                  <p className="text-2xl font-bold text-on-surface">
-                    {formatCurrency(rwArr.reduce((s, p) => s + (p?.orderTotal || 0), 0))}
-                  </p>
-                  <p className="text-xs text-on-surface-variant mt-1">
-                    {rwArr.length === 1
-                      ? `${formatCurrency(redwall.perUnitTotal)}/unit${redwall.setupFees?.screenSetup > 0 ? ` + ${formatCurrency(redwall.setupFees.screenSetup)} setup` : ' (setup waived)'}`
-                      : `${rwArr.filter(p => p).length} products`}
-                  </p>
-                </div>
-              )}
-            </div>
-            {osp.flags?.length > 0 && (
-              <div className="mt-2 space-y-1">
-                {osp.flags.map((f, i) => (
-                  <p key={i} className="text-xs text-secondary bg-secondary-fixed/20 rounded px-3 py-1.5">⚠ {f}</p>
-                ))}
-              </div>
-            )}
           </>
         )}
 
@@ -737,6 +684,32 @@ export default function ViewQuote() {
                         <p className="text-sm text-on-surface leading-relaxed">{qa.reviewer_notes}</p>
                       </div>
                     )}
+
+                    {/* Alternative manufacturer cost nudge */}
+                    {(() => {
+                      const altSupplier = activeSupplier === 'REDWALL' ? 'OSP' : 'Redwall'
+                      const altArr = activeSupplier === 'REDWALL' ? ospArr : rwArr
+                      const activeDecoTotal = activePricingArr.reduce((s, p) => s + (p?.perUnitDecoration || 0), 0)
+                      const altDecoTotal = altArr.reduce((s, p) => s + (p?.perUnitDecoration || 0), 0)
+                      const hasAlt = altArr.some(p => p?.perUnitDecoration != null)
+                      if (!hasAlt || altDecoTotal >= activeDecoTotal) return null
+                      const savings = activeDecoTotal - altDecoTotal
+                      return (
+                        <div className="border-t border-outline-variant/20 pt-4">
+                          <div className="flex gap-3 bg-secondary-fixed/30 border border-secondary/20 rounded-lg px-3 py-2.5">
+                            <svg className="w-4 h-4 text-secondary shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                              <path strokeLinecap="round" strokeLinejoin="round" d="M12 6v12m-3-2.818.879.659c1.171.879 3.07.879 4.242 0 1.172-.879 1.172-2.303 0-3.182C13.536 12.219 12.768 12 12 12c-.725 0-1.45-.22-2.003-.659-1.106-.879-1.106-2.303 0-3.182s2.9-.879 4.006 0l.415.33M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z" />
+                            </svg>
+                            <div>
+                              <p className="text-xs font-semibold text-secondary">Lower decoration cost available</p>
+                              <p className="text-xs text-on-surface mt-0.5">
+                                {altSupplier} decoration is {formatCurrency(altDecoTotal)}/unit vs {formatCurrency(activeDecoTotal)}/unit with {activeSupplier === 'REDWALL' ? 'Redwall' : 'OSP'} — saving {formatCurrency(savings)}/unit.
+                              </p>
+                            </div>
+                          </div>
+                        </div>
+                      )
+                    })()}
                   </div>
                 )}
 

@@ -153,7 +153,7 @@ function Field({ label, type = 'text', value, onChange, placeholder, className =
         value={value}
         onChange={e => onChange(e.target.value)}
         placeholder={placeholder}
-        className="text-sm bg-surface border border-outline-variant rounded px-3 py-1.5 text-on-surface placeholder:text-on-surface-variant focus:outline-none focus:ring-1 focus:ring-primary"
+        className="text-sm bg-surface border border-outline-variant rounded px-3 py-1.5 text-on-surface placeholder:text-[#cacaca] focus:outline-none focus:ring-1 focus:ring-primary"
       />
     </div>
   )
@@ -389,10 +389,10 @@ function ProductCard({ product, index, onChange, onRemove, canRemove, selectedSu
                       />
                     </div>
                   </div>
-                  {li === 0 && (showMiscPrint
-                    ? <Field label="Special inks / effects" value={product.special_inks} onChange={v => set('special_inks', v)} placeholder="PMS, metallic (comma-separated)" />
+                  {showMiscPrint
+                    ? <Field label="Special inks / effects" value={product.special_inks} onChange={v => set('special_inks', v)} placeholder="add misc print details, comma separated" />
                     : <button type="button" onClick={() => setShowMiscPrint(true)} className="text-xs text-on-surface-variant hover:text-primary underline underline-offset-2 text-left">misc print details</button>
-                  )}
+                  }
                 </div>
               ))}
               <button
@@ -546,7 +546,7 @@ export default function QuoteForm({ fields, setFields }) {
           onChange={e => setFields(f => ({ ...f, notes: e.target.value }))}
           placeholder="Any additional notes for this quote…"
           rows={3}
-          className="w-full text-sm bg-surface border border-outline-variant rounded px-3 py-2 text-on-surface placeholder:text-on-surface-variant focus:outline-none focus:ring-1 focus:ring-primary resize-y"
+          className="w-full text-sm bg-surface border border-outline-variant rounded px-3 py-2 text-on-surface placeholder:text-[#cacaca] focus:outline-none focus:ring-1 focus:ring-primary resize-y"
         />
       </div>
 
