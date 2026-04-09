@@ -69,7 +69,7 @@ export default function ViewQuote() {
       setProfitMode(quote.profit_mode || 'per_shirt')
       setProfitValue(String(quote.profit_value ?? 0))
     }
-  }, [quote?.id])
+  }, [quote?.id, quote?.profit_mode, quote?.profit_value])
 
   async function handleSendDraft() {
     setSendingDraft(true)
@@ -221,6 +221,27 @@ export default function ViewQuote() {
   const qaFailed = (qa.failed || []).filter(matchesSupplier)
   const qaUnverified = (qa.unable_to_verify || []).filter(matchesSupplier)
   const logs = Array.isArray(quote.activity_log) ? quote.activity_log : []
+
+  const activePricingArr = activeSupplier === 'REDWALL' ? rwArr : ospArr
+  const totalQty = products.reduce((s, p) => s + (p.quantity || 0), 0)
+  const grandTotal = activePricingArr.reduce((s, pricing, i) => {
+    if (!pricing) return s
+    const qty = products[i]?.quantity || 0
+    const profit = calcProfitPerUnit({
+      mode: profitMode,
+      value: profitValue,
+      garmentPerUnit: pricing.perUnitGarment || 0,
+      decorationPerUnit: pricing.perUnitDecoration || 0,
+      totalQty,
+    })
+    return s + calcProductTotal({
+      garmentPerUnit: pricing.perUnitGarment || 0,
+      decorationPerUnit: pricing.perUnitDecoration || 0,
+      profitPerUnit: profit,
+      qty,
+      setupFees: pricing.setupFees,
+    })
+  }, 0)
 
   return (
     <div className="min-h-screen bg-surface">
@@ -436,86 +457,61 @@ export default function ViewQuote() {
           <>
             <SectionLabel>Pricing</SectionLabel>
             {/* Itemized cost breakdown per product */}
-            {(() => {
-              const activePricingArr = activeSupplier === 'REDWALL' ? rwArr : ospArr
-              const totalQty = products.reduce((s, p) => s + (p.quantity || 0), 0)
-              const grandTotal = activePricingArr.reduce((s, pricing, i) => {
-                if (!pricing) return s
-                const qty = products[i]?.quantity || 0
+            <div className="bg-surface-container-low rounded p-4 mb-3 space-y-4">
+              {activePricingArr.map((pricing, i) => {
+                if (!pricing) return null
+                const prod = products[i]
+                const qty = prod?.quantity || 0
+                const garment = pricing.perUnitGarment || 0
+                const decoration = pricing.perUnitDecoration || 0
                 const profit = calcProfitPerUnit({
                   mode: profitMode,
                   value: profitValue,
-                  garmentPerUnit: pricing.perUnitGarment || 0,
-                  decorationPerUnit: pricing.perUnitDecoration || 0,
+                  garmentPerUnit: garment,
+                  decorationPerUnit: decoration,
                   totalQty,
                 })
-                return s + calcProductTotal({
-                  garmentPerUnit: pricing.perUnitGarment || 0,
-                  decorationPerUnit: pricing.perUnitDecoration || 0,
-                  profitPerUnit: profit,
-                  qty,
-                  setupFees: pricing.setupFees,
-                })
-              }, 0)
+                const perUnit = Math.round((garment + decoration + profit) * 100) / 100
+                const productTotal = calcProductTotal({ garmentPerUnit: garment, decorationPerUnit: decoration, profitPerUnit: profit, qty, setupFees: pricing.setupFees })
+                const label = products.length > 1
+                  ? `Product ${i + 1}${prod?.brand_style ? ` — ${prod.brand_style}` : ''}`
+                  : (prod?.brand_style || 'Product')
 
-              return (
-                <div className="bg-surface-container-low rounded p-4 mb-3 space-y-4">
-                  {activePricingArr.map((pricing, i) => {
-                    if (!pricing) return null
-                    const prod = products[i]
-                    const qty = prod?.quantity || 0
-                    const garment = pricing.perUnitGarment || 0
-                    const decoration = pricing.perUnitDecoration || 0
-                    const profit = calcProfitPerUnit({
-                      mode: profitMode,
-                      value: profitValue,
-                      garmentPerUnit: garment,
-                      decorationPerUnit: decoration,
-                      totalQty,
-                    })
-                    const perUnit = Math.round((garment + decoration + profit) * 100) / 100
-                    const productTotal = calcProductTotal({ garmentPerUnit: garment, decorationPerUnit: decoration, profitPerUnit: profit, qty, setupFees: pricing.setupFees })
-                    const label = products.length > 1
-                      ? `Product ${i + 1}${prod?.brand_style ? ` — ${prod.brand_style}` : ''}`
-                      : (prod?.brand_style || 'Product')
-
-                    return (
-                      <div key={i} className={i > 0 ? 'border-t border-outline-variant/20 pt-4' : ''}>
-                        {products.length > 1 && (
-                          <p className="text-xs font-semibold text-on-surface-variant uppercase tracking-wider mb-2">{label}</p>
-                        )}
-                        <div className="space-y-1 text-sm">
-                          <div className="flex justify-between">
-                            <span className="text-on-surface-variant">Garment Cost</span>
-                            <span className="text-on-surface">{formatCurrency(garment)}<span className="text-xs text-on-surface-variant">/unit</span></span>
-                          </div>
-                          <div className="flex justify-between">
-                            <span className="text-on-surface-variant">Decoration Cost</span>
-                            <span className="text-on-surface">{formatCurrency(decoration)}<span className="text-xs text-on-surface-variant">/unit</span></span>
-                          </div>
-                          <div className="flex justify-between">
-                            <span className="text-on-surface-variant">Giltee Profit</span>
-                            <span className="text-on-surface">{formatCurrency(profit)}<span className="text-xs text-on-surface-variant">/unit</span></span>
-                          </div>
-                          <div className="flex justify-between border-t border-outline-variant/20 pt-1 mt-1">
-                            <span className="text-on-surface font-medium">Per Unit Total</span>
-                            <span className="text-on-surface font-medium">{formatCurrency(perUnit)}</span>
-                          </div>
-                          <div className="flex justify-between">
-                            <span className="text-on-surface-variant">Product Total <span className="text-xs">({qty} units)</span></span>
-                            <span className="text-on-surface font-medium">{formatCurrency(productTotal)}</span>
-                          </div>
-                        </div>
+                return (
+                  <div key={i} className={i > 0 ? 'border-t border-outline-variant/20 pt-4' : ''}>
+                    {products.length > 1 && (
+                      <p className="text-xs font-semibold text-on-surface-variant uppercase tracking-wider mb-2">{label}</p>
+                    )}
+                    <div className="space-y-1 text-sm">
+                      <div className="flex justify-between">
+                        <span className="text-on-surface-variant">Garment Cost</span>
+                        <span className="text-on-surface">{formatCurrency(garment)}<span className="text-xs text-on-surface-variant">/unit</span></span>
                       </div>
-                    )
-                  })}
-                  <div className="flex justify-between border-t-2 border-outline-variant/40 pt-3 mt-2">
-                    <span className="text-base font-bold text-on-surface">Quote Grand Total</span>
-                    <span className="text-base font-bold text-on-surface">{formatCurrency(grandTotal)}</span>
+                      <div className="flex justify-between">
+                        <span className="text-on-surface-variant">Decoration Cost</span>
+                        <span className="text-on-surface">{formatCurrency(decoration)}<span className="text-xs text-on-surface-variant">/unit</span></span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-on-surface-variant">Giltee Profit</span>
+                        <span className="text-on-surface">{formatCurrency(profit)}<span className="text-xs text-on-surface-variant">/unit</span></span>
+                      </div>
+                      <div className="flex justify-between border-t border-outline-variant/20 pt-1 mt-1">
+                        <span className="text-on-surface font-medium">Per Unit Total</span>
+                        <span className="text-on-surface font-medium">{formatCurrency(perUnit)}</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-on-surface-variant">Product Total <span className="text-xs">({qty} units)</span></span>
+                        <span className="text-on-surface font-medium">{formatCurrency(productTotal)}</span>
+                      </div>
+                    </div>
                   </div>
-                </div>
-              )
-            })()}
+                )
+              })}
+              <div className="flex justify-between border-t-2 border-outline-variant/40 pt-3 mt-2">
+                <span className="text-base font-bold text-on-surface">Quote Grand Total</span>
+                <span className="text-base font-bold text-on-surface">{formatCurrency(grandTotal)}</span>
+              </div>
+            </div>
             <div className="grid grid-cols-2 gap-3">
               {/* OSP */}
               <div className={`rounded p-4 border-2 ${quote.recommended_supplier === 'OSP' ? 'border-primary bg-surface-container-low' : 'border-transparent bg-surface-container-low'}`}>
