@@ -86,7 +86,9 @@ CREATE TABLE IF NOT EXISTS quotes (
   updated_at           TIMESTAMP    NOT NULL DEFAULT NOW(),
   created_by           VARCHAR(255),     -- Stores user email/name (denormalized per PRD — not a FK)
   selected_supplier    VARCHAR(20),
-  customer_id          INTEGER REFERENCES customers(id) ON DELETE SET NULL
+  customer_id          INTEGER REFERENCES customers(id) ON DELETE SET NULL,
+  profit_mode          TEXT        NOT NULL DEFAULT 'per_shirt',
+  profit_value         NUMERIC     NOT NULL DEFAULT 0
 );
 
 -- Indexes for common query patterns

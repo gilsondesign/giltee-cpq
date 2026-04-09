@@ -91,3 +91,17 @@ describe('listUsers', () => {
     expect(result.invitations[0].status).toBe('pending')
   })
 })
+
+describe('queries.js profit columns', () => {
+  const fs = require('fs')
+  const path = require('path')
+  const source = fs.readFileSync(path.join(__dirname, '../db/queries.js'), 'utf8')
+
+  it('includes profit_mode in UPDATABLE_QUOTE_COLUMNS', () => {
+    expect(source).toContain("'profit_mode'")
+  })
+
+  it('includes profit_value in UPDATABLE_QUOTE_COLUMNS', () => {
+    expect(source).toContain("'profit_value'")
+  })
+})
