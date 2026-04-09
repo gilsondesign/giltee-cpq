@@ -1,10 +1,11 @@
-import { NavLink, useNavigate } from 'react-router-dom'
+import { NavLink, useNavigate, useLocation } from 'react-router-dom'
 import { useState } from 'react'
 import { useAuth } from '../context/AuthContext'
 
 export default function NavBar() {
   const { user } = useAuth()
   const navigate = useNavigate()
+  const location = useLocation()
   const [searchQuery, setSearchQuery] = useState('')
 
   function handleSearch(e) {
@@ -23,16 +24,15 @@ export default function NavBar() {
       {/* Center: Nav links */}
       <div className="flex items-center gap-6">
         {[
-          { to: '/', label: 'Quotes' },
-          { to: '/customers', label: 'Accounts' },
-        ].map(({ to, label }) => (
+          { to: '/', label: 'Quotes', active: location.pathname === '/' || location.pathname.startsWith('/quotes') },
+          { to: '/customers', label: 'Accounts', active: location.pathname.startsWith('/customers') },
+        ].map(({ to, label, active }) => (
           <NavLink
             key={to}
             to={to}
-            end={to === '/'}
-            className={({ isActive }) =>
+            className={() =>
               `text-sm font-medium pb-1 border-b-2 transition-colors ${
-                isActive
+                active
                   ? 'text-primary border-primary'
                   : 'text-on-surface-variant border-transparent hover:text-on-surface'
               }`
@@ -51,7 +51,7 @@ export default function NavBar() {
             value={searchQuery}
             onChange={e => setSearchQuery(e.target.value)}
             placeholder="Search..."
-            className="text-sm bg-surface-container-low rounded px-3 py-1.5 text-on-surface placeholder:text-on-surface-variant focus:outline-none focus:bg-surface-container-lowest w-44"
+            className="text-sm bg-surface-container-low rounded px-3 py-1.5 text-on-surface placeholder:text-[#cacaca] focus:outline-none focus:bg-surface-container-lowest w-44"
           />
         </form>
 
