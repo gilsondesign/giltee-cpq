@@ -45,6 +45,15 @@ export default function ViewQuote() {
   const [profitMode, setProfitMode] = useState('per_shirt')
   const [profitValue, setProfitValue] = useState('0')
 
+  function saveProfitSettings(mode, value) {
+    fetch(`/api/quotes/${id}`, {
+      method: 'PATCH',
+      credentials: 'include',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ profit_mode: mode, profit_value: parseFloat(value) || 0 }),
+    }).catch(() => {}) // silent — live calc doesn't require save success
+  }
+
   const fetchQuote = useCallback(() => {
     fetch(`/api/quotes/${id}`, { credentials: 'include' })
       .then(r => {
@@ -448,6 +457,60 @@ export default function ViewQuote() {
                   </div>
                 )
               })}
+            </div>
+          </>
+        )}
+
+        {/* Profit Margin Editor — builder only, never in PDF/email */}
+        {!editing && ospArr.length > 0 && (
+          <>
+            <SectionLabel>Profit Margin</SectionLabel>
+            <div className="bg-surface-container-low rounded p-4 mb-3">
+              {/* Segmented toggle */}
+              <div className="flex rounded overflow-hidden border border-outline-variant w-fit mb-3">
+                {[
+                  { key: 'per_shirt', label: '$ per Shirt' },
+                  { key: 'percent', label: '% of Cost' },
+                  { key: 'fixed_total', label: '$ Total' },
+                ].map(({ key, label }) => (
+                  <button
+                    key={key}
+                    type="button"
+                    onClick={() => {
+                      setProfitMode(key)
+                      setProfitValue('0')
+                      saveProfitSettings(key, 0)
+                    }}
+                    className={`px-4 py-1.5 text-xs font-medium transition-colors ${
+                      profitMode === key
+                        ? 'bg-primary text-on-primary'
+                        : 'bg-surface text-on-surface-variant hover:bg-surface-container'
+                    }`}
+                  >
+                    {label}
+                  </button>
+                ))}
+              </div>
+              {/* Value input */}
+              <div className="flex items-center gap-2">
+                <span className="text-xs text-on-surface-variant w-6">
+                  {profitMode === 'percent' ? '%' : '$'}
+                </span>
+                <input
+                  id="profit-value"
+                  aria-label="Profit value"
+                  type="number"
+                  min="0"
+                  step="0.01"
+                  value={profitValue}
+                  onChange={e => setProfitValue(e.target.value)}
+                  onBlur={e => saveProfitSettings(profitMode, e.target.value)}
+                  className="w-28 text-sm bg-surface border border-outline-variant rounded px-3 py-1.5 text-on-surface focus:outline-none focus:ring-1 focus:ring-primary"
+                />
+                <span className="text-xs text-on-surface-variant">
+                  {profitMode === 'per_shirt' ? 'per shirt' : profitMode === 'percent' ? 'of cost' : 'total profit'}
+                </span>
+              </div>
             </div>
           </>
         )}

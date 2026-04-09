@@ -1,4 +1,5 @@
 import { render, screen, waitFor } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import { MemoryRouter, Route, Routes } from 'react-router-dom'
 import { AuthContext } from '../../context/AuthContext'
 import ViewQuote from '../ViewQuote'
@@ -257,5 +258,53 @@ describe('pricing breakdown', () => {
       expect(screen.getAllByText('Product 1 — 3001CVC').length).toBeGreaterThan(0)
       expect(screen.getAllByText('Product 2 — Gildan 5000').length).toBeGreaterThan(0)
     })
+  })
+})
+
+describe('profit editor', () => {
+  it('renders the profit mode segmented toggle', async () => {
+    renderViewQuote(MOCK_QUOTE_READY)
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: /per.shirt/i })).toBeInTheDocument()
+      expect(screen.getByRole('button', { name: /% of cost/i })).toBeInTheDocument()
+      expect(screen.getByRole('button', { name: /\$ total/i })).toBeInTheDocument()
+    })
+  })
+
+  it('renders a profit value input', async () => {
+    renderViewQuote(MOCK_QUOTE_READY)
+    await waitFor(() => expect(screen.getByLabelText('Profit value')).toBeInTheDocument())
+  })
+
+  it('defaults to per_shirt mode with value from quote data', async () => {
+    const quoteWithProfit = {
+      ...MOCK_QUOTE_READY,
+      profit_mode: 'per_shirt',
+      profit_value: 7.5,
+    }
+    renderViewQuote(quoteWithProfit)
+    await waitFor(() => {
+      const input = screen.getByLabelText('Profit value')
+      expect(input.value).toBe('7.5')
+    })
+  })
+
+  it('switching modes calls PATCH to save', async () => {
+    const user = userEvent.setup()
+    renderViewQuote(MOCK_QUOTE_READY)
+    await waitFor(() => screen.getByRole('button', { name: /% of cost/i }))
+
+    // Reset mock to track the PATCH call
+    global.fetch = vi.fn().mockResolvedValue({ ok: true, json: async () => ({}) })
+    await user.click(screen.getByRole('button', { name: /% of cost/i }))
+
+    await waitFor(() => {
+      const calls = global.fetch.mock.calls
+      const patch = calls.find(([url, opts]) => opts?.method === 'PATCH')
+      expect(patch).toBeDefined()
+      const body = JSON.parse(patch[1].body)
+      expect(body.profit_mode).toBe('percent')
+    })
+    vi.restoreAllMocks()
   })
 })
