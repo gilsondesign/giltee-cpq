@@ -11,7 +11,7 @@ function Field({ label, value, onChange, placeholder, type = 'text', className =
         value={value}
         onChange={e => onChange(e.target.value)}
         placeholder={placeholder}
-        className="text-sm bg-surface border border-outline-variant rounded px-3 py-1.5 text-on-surface placeholder:text-on-surface-variant focus:outline-none focus:ring-1 focus:ring-primary"
+        className="text-sm bg-surface border border-outline-variant rounded px-3 py-1.5 text-on-surface placeholder:text-[#cacaca] focus:outline-none focus:ring-1 focus:ring-primary"
       />
     </div>
   )
@@ -26,7 +26,7 @@ function Textarea({ label, value, onChange, placeholder, rows = 3 }) {
         onChange={e => onChange(e.target.value)}
         placeholder={placeholder}
         rows={rows}
-        className="text-sm bg-surface border border-outline-variant rounded px-3 py-2 text-on-surface placeholder:text-on-surface-variant focus:outline-none focus:ring-1 focus:ring-primary resize-y"
+        className="text-sm bg-surface border border-outline-variant rounded px-3 py-2 text-on-surface placeholder:text-[#cacaca] focus:outline-none focus:ring-1 focus:ring-primary resize-y"
       />
     </div>
   )
@@ -147,7 +147,7 @@ export default function CreateCustomer() {
                   onChange={e => set('billing_address', e.target.value)}
                   placeholder="123 Diesel Dr, Milwaukee WI 53202"
                   rows={2}
-                  className="text-sm bg-surface border border-outline-variant rounded px-3 py-2 text-on-surface placeholder:text-on-surface-variant focus:outline-none focus:ring-1 focus:ring-primary resize-none"
+                  className="text-sm bg-surface border border-outline-variant rounded px-3 py-2 text-on-surface placeholder:text-[#cacaca] focus:outline-none focus:ring-1 focus:ring-primary resize-none"
                 />
               </div>
               <div className="flex flex-col gap-1 col-span-2">
@@ -157,24 +157,12 @@ export default function CreateCustomer() {
                   onChange={e => set('shipping_address', e.target.value)}
                   placeholder="Same as billing, or enter a different address"
                   rows={2}
-                  className="text-sm bg-surface border border-outline-variant rounded px-3 py-2 text-on-surface placeholder:text-on-surface-variant focus:outline-none focus:ring-1 focus:ring-primary resize-none"
+                  className="text-sm bg-surface border border-outline-variant rounded px-3 py-2 text-on-surface placeholder:text-[#cacaca] focus:outline-none focus:ring-1 focus:ring-primary resize-none"
                 />
               </div>
             </div>
           </Section>
 
-          <Section title="Decoration Preferences">
-            <Field label="Decoration Types" value={f.decoration_types} onChange={v => set('decoration_types', v)} placeholder="Screen Print, Embroidery" />
-            <Field label="Garment Vendor Preference" value={f.garment_vendor_pref} onChange={v => set('garment_vendor_pref', v)} placeholder="S&S Activewear" />
-            <Field label="Pantone Colors" value={f.pantone_colors} onChange={v => set('pantone_colors', v)} placeholder="PMS 286 C" />
-            <Field label="Ink Colors" value={f.ink_colors} onChange={v => set('ink_colors', v)} placeholder="Navy, White" />
-            <Field label="Print Locations" value={f.print_locations} onChange={v => set('print_locations', v)} placeholder="Left chest, Full back" />
-            <Field label="Logo File Location" value={f.logo_file_location} onChange={v => set('logo_file_location', v)} placeholder="drive.google.com/…" />
-            <div className="col-span-2 grid grid-cols-2 gap-4">
-              <Textarea label="Sizing Notes" value={f.sizing_notes} onChange={v => set('sizing_notes', v)} placeholder="Runs large, size down" rows={2} />
-              <Textarea label="Garment Style Preferences" value={f.garment_style_prefs} onChange={v => set('garment_style_prefs', v)} placeholder="Bella+Canvas, comfort fit" rows={2} />
-            </div>
-          </Section>
 
 <Section title="Account Notes">
             <div className="col-span-2">

@@ -76,7 +76,7 @@ export default function CustomerPicker({ linkedCustomerId, linkedCustomer, onLin
           value={query}
           onChange={e => setQuery(e.target.value)}
           placeholder="Search by company or acct #…"
-          className="text-sm bg-surface border border-outline-variant rounded px-3 py-1.5 text-on-surface placeholder:text-on-surface-variant focus:outline-none focus:ring-1 focus:ring-primary"
+          className="text-sm bg-surface border border-outline-variant rounded px-3 py-1.5 text-on-surface placeholder:text-[#cacaca] focus:outline-none focus:ring-1 focus:ring-primary"
         />
       </div>
       {open && results.length > 0 && (

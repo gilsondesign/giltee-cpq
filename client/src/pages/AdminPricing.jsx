@@ -190,12 +190,35 @@ export default function AdminPricing() {
             {/* FEES */}
             <div className="bg-surface-container-low rounded border border-outline-variant/40 p-4">
               <div className="text-xs font-bold text-on-primary bg-primary px-3 py-1.5 rounded -mx-4 -mt-4 mb-3 tracking-wider">FEES</div>
-              <FeeInput label="Screen fee per color" note="*" value={config.fees.screenFeePerColor} onChange={v => updateFee('screenFeePerColor', v)} />
-              <FeeInput label="Repeat screen per color" note="*" value={config.fees.repeatScreenPerColor} onChange={v => updateFee('repeatScreenPerColor', v)} />
+              <FeeInput label="Screen fee per color" value={config.fees.screenFeePerColor} onChange={v => updateFee('screenFeePerColor', v)} />
+              <FeeInput label="Repeat screen per color" value={config.fees.repeatScreenPerColor} onChange={v => updateFee('repeatScreenPerColor', v)} />
               <FeeInput label="Ink switch (limit 1 per 25pc)" value={config.fees.inkSwitch} onChange={v => updateFee('inkSwitch', v)} />
               <FeeInput label="Custom PMS ink color" value={config.fees.customPmsInk} onChange={v => updateFee('customPmsInk', v)} />
-              <div className="pt-2 text-xs text-on-surface-variant italic">
-                *Screen fees waived at {config.fees.screenFeeWaivedAt} pc
+              <FeeInput label="Art cleanup" value={config.fees.artCleanup ?? 0} onChange={v => updateFee('artCleanup', v)} />
+              <div className="flex items-center justify-between py-2 border-b border-outline-variant/20">
+                <span className="text-xs text-on-surface">Screen fees waived at</span>
+                <div className="flex items-center gap-1">
+                  <input
+                    type="number"
+                    step="1"
+                    min="0"
+                    value={config.fees.screenFeeWaivedAt ?? ''}
+                    onChange={e => updateFee('screenFeeWaivedAt', parseFloat(e.target.value) || 0)}
+                    className="w-16 text-xs text-right bg-surface border border-outline-variant rounded px-2 py-1 text-on-surface focus:outline-none focus:ring-1 focus:ring-primary placeholder:text-[#cacaca]"
+                    placeholder="e.g. 96"
+                  />
+                  <span className="text-xs text-on-surface-variant">pc</span>
+                </div>
+              </div>
+              <div className="flex items-center justify-between py-2">
+                <label htmlFor={`underbase-${activeTab}`} className="text-xs text-on-surface cursor-pointer">Charge for underbase</label>
+                <input
+                  id={`underbase-${activeTab}`}
+                  type="checkbox"
+                  checked={config.fees.chargeForUnderbase ?? false}
+                  onChange={e => updateFee('chargeForUnderbase', e.target.checked)}
+                  className="w-4 h-4 accent-primary cursor-pointer"
+                />
               </div>
             </div>
 

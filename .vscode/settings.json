@@ -8,3 +8,18 @@
   },
   "editor.quickSuggestions": { "strings": true }
 }
+{
+  "allowedTools": [
+    "Bash(npm test*)",
+    "Bash(npm run*)",
+    "Bash(node*)",
+    "Bash(sed*)",
+    "Bash(grep*)",
+    "Bash(cd*)",
+    "Bash(cat*)",
+    "Bash(ls*)",
+    "Bash(mkdir*)",
+    "Bash(cp*)",
+    "Bash(mv*)"
+  ]
+}

@@ -137,7 +137,7 @@ export default function Admin() {
             onChange={e => setInviteEmail(e.target.value)}
             placeholder="Email address to invite"
             required
-            className="flex-1 bg-surface rounded px-3 py-2 text-sm text-on-surface placeholder:text-on-surface-variant focus:outline-none focus:ring-1 focus:ring-primary"
+            className="flex-1 bg-surface rounded px-3 py-2 text-sm text-on-surface placeholder:text-[#cacaca] focus:outline-none focus:ring-1 focus:ring-primary"
           />
           <button
             type="submit"

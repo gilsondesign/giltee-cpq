@@ -313,4 +313,49 @@ SUBJECT: [subject line]
   }
 }
 
-module.exports = { runQuotePipeline }
+async function runQACheck(quoteId) {
+  const quote = await queries.getQuote(quoteId)
+  if (!quote) throw new Error('Quote not found')
+  if (!quote.intake_record) throw new Error('Quote has not been processed yet — run the pipeline first')
+
+  const effectiveSupplier = quote.selected_supplier || quote.recommended_supplier
+
+  const qaText = await claudeService.callClaude({
+    systemPrompt: skills.QA,
+    userPrompt: `Run the complete QA checklist on this quote data.
+
+Quote fields: ${JSON.stringify({
+      customer_name: quote.customer_name,
+      customer_email: quote.customer_email,
+      project_name: quote.project_name,
+    })}
+Intake record: ${JSON.stringify(quote.intake_record)}
+Garment data: ${JSON.stringify(quote.garment_data)}
+OSP pricing: ${JSON.stringify(quote.pricing_osp)}
+Redwall pricing: ${JSON.stringify(quote.pricing_redwall)}
+Selected supplier: ${effectiveSupplier}
+
+Note: customer_name and customer_email may be stored either in "Quote fields" or inside intake_record.customer — treat either location as valid.
+The quote may contain multiple products. Check each product independently.
+
+For each item in "failed" and "unable_to_verify", include a "supplier" field indicating which supplier the issue applies to: "OSP", "REDWALL", or "BOTH" (for issues that apply regardless of supplier).
+
+Return ONLY valid JSON:
+{
+  "passed_count": 0,
+  "total_checks": 0,
+  "failed": [{ "check": "check name", "issue": "specific problem", "supplier": "OSP" }],
+  "unable_to_verify": [{ "check": "check name", "reason": "why unable", "supplier": "BOTH" }],
+  "status": "APPROVED",
+  "reviewer_notes": ""
+}
+For status use: APPROVED, NEEDS_FIXES, or BLOCKED`,
+  })
+
+  const qa_report = claudeService.parseJSONFromText(qaText)
+  await queries.updateQuote(quoteId, { qa_report })
+  await appendLog(quoteId, 'QA re-checked', { status: qa_report.status })
+  return qa_report
+}
+
+module.exports = { runQuotePipeline, runQACheck }

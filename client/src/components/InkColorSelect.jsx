@@ -148,7 +148,7 @@ export default function InkColorSelect({ value = [], onChange, stockColors = nul
                   value={search}
                   onChange={e => setSearch(e.target.value)}
                   placeholder="Search colors…"
-                  className="w-full text-xs bg-surface border border-outline-variant rounded px-2 py-1 text-on-surface placeholder:text-on-surface-variant focus:outline-none focus:ring-1 focus:ring-primary"
+                  className="w-full text-xs bg-surface border border-outline-variant rounded px-2 py-1 text-on-surface placeholder:text-[#cacaca] focus:outline-none focus:ring-1 focus:ring-primary"
                   onClick={e => e.stopPropagation()}
                 />
               </div>

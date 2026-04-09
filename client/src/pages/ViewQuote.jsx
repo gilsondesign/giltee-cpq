@@ -44,6 +44,7 @@ export default function ViewQuote() {
   const [draftResult, setDraftResult] = useState(null) // { draftId } | { error }
   const [profitMode, setProfitMode] = useState('per_shirt')
   const [profitValue, setProfitValue] = useState('0')
+  const [qaChecking, setQaChecking] = useState(false)
 
   function saveProfitSettings(mode, value) {
     fetch(`/api/quotes/${id}`, {
@@ -158,6 +159,17 @@ export default function ViewQuote() {
       if (!res.ok) throw new Error(data.error || 'Save failed')
       setQuote(data)
       setEditing(false)
+
+      // Re-run QA in the background if the quote has already been priced
+      const hasPricing = data.pricing_osp?.length > 0 || data.pricing_redwall?.length > 0
+      if (hasPricing) {
+        setQaChecking(true)
+        fetch(`/api/quotes/${id}/qa`, { method: 'POST', credentials: 'include' })
+          .then(r => r.ok ? r.json() : null)
+          .then(result => { if (result?.qa_report) setQuote(prev => ({ ...prev, qa_report: result.qa_report })) })
+          .catch(() => {})
+          .finally(() => setQaChecking(false))
+      }
     } catch (err) {
       setSaveError(err.message)
     } finally {
@@ -279,30 +291,43 @@ export default function ViewQuote() {
           <div className="flex flex-col items-end gap-2">
             {!editing && (
               <div className="flex items-center gap-2">
+                {/* Quote Quality — always available */}
+                {(() => {
+                  const issueCount = qaFailed.length
+                  const hasIssues = issueCount > 0
+                  const label = hasIssues
+                    ? `Quote Quality · ${issueCount} issue${issueCount !== 1 ? 's' : ''}`
+                    : 'Quote Quality'
+                  return (
+                    <button
+                      onClick={() => setPanel('qa')}
+                      className={`flex items-center gap-1.5 text-xs font-medium px-3 py-2 rounded border border-outline-variant hover:bg-surface-container-low transition-colors ${qaChecking ? 'text-on-surface-variant/40' : hasIssues ? 'text-error' : 'text-on-surface-variant'}`}
+                    >
+                      {qaChecking && (
+                        <svg className="w-3 h-3 animate-spin shrink-0" fill="none" viewBox="0 0 24 24">
+                          <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                          <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+                        </svg>
+                      )}
+                      {label}
+                    </button>
+                  )
+                })()}
+
                 {/* Output buttons — disabled until quote is ready */}
                 <div className="flex rounded border border-outline-variant overflow-hidden">
                   {[
-                    {
-                      key: 'qa',
-                      label: (() => {
-                        const issueCount = qaFailed.length + qaUnverified.length
-                        return issueCount > 0
-                          ? `Quote Quality · ${issueCount} issue${issueCount !== 1 ? 's' : ''}`
-                          : 'Quote Quality'
-                      })(),
-                    },
                     { key: 'email', label: 'Email Draft' },
                     { key: 'pdf', label: 'Quote PDF' },
                   ].map(({ key, label }) => {
                     const isReady = quote.status === 'ready'
-                    const hasIssues = key === 'qa' && (qaFailed.length + qaUnverified.length) > 0
                     return (
                       <button
                         key={key}
                         onClick={() => setPanel(key)}
                         disabled={!isReady}
                         title={!isReady ? 'Run the quote first' : undefined}
-                        className={`text-xs font-medium px-3 py-2 border-r border-outline-variant last:border-r-0 hover:bg-surface-container-low transition-colors disabled:opacity-40 disabled:cursor-not-allowed ${hasIssues ? 'text-error' : 'text-on-surface-variant'}`}
+                        className="text-xs font-medium px-3 py-2 border-r border-outline-variant last:border-r-0 hover:bg-surface-container-low transition-colors disabled:opacity-40 disabled:cursor-not-allowed text-on-surface-variant"
                       >
                         {label}
                       </button>

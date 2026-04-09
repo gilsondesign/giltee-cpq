@@ -6,4 +6,9 @@
   body {
     @apply bg-surface text-on-surface font-sans;
   }
+
+  ::placeholder {
+    color: #cacaca;
+    opacity: 1;
+  }
 }

@@ -142,6 +142,19 @@ router.post('/:id/draft', async (req, res, next) => {
   }
 })
 
+// POST /api/quotes/:id/qa — re-run QA check using existing quote data (no full pipeline)
+router.post('/:id/qa', async (req, res, next) => {
+  try {
+    const quote = await queries.getQuote(req.params.id)
+    if (!quote) return res.status(404).json({ error: 'Quote not found' })
+    if (!quote.intake_record) return res.status(400).json({ error: 'Quote has not been processed yet — run the pipeline first' })
+    const qa_report = await pipelineService.runQACheck(req.params.id)
+    res.json({ qa_report })
+  } catch (err) {
+    next(err)
+  }
+})
+
 // POST /api/quotes/:id/run — trigger the AI pipeline
 router.post('/:id/run', async (req, res, next) => {
   try {
