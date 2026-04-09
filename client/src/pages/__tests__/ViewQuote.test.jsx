@@ -30,6 +30,8 @@ const MOCK_QUOTE_DRAFT = {
 const MOCK_QUOTE_READY = {
   ...MOCK_QUOTE_DRAFT,
   status: 'ready',
+  profit_mode: 'per_shirt',
+  profit_value: 0,
   intake_record: {
     customer: { name: 'Kohn Law', email: 'info@kohnlaw.com' },
     product: { brand_style: 'Bella+Canvas 3001', quantity: 60, colors: ['Navy'] },
@@ -37,9 +39,10 @@ const MOCK_QUOTE_READY = {
     edge_cases: { dark_garment: false },
   },
   garment_data: { style: 'Bella+Canvas 3001', requestedColor: 'Navy', available: true, standardPrice: 4.50 },
-  pricing_osp: { perUnitTotal: 11.43, setupFees: { screenSetup: 40 }, orderTotal: 725.80, flags: [] },
-  pricing_redwall: { perUnitTotal: 13.02, setupFees: { screenSetup: 96 }, orderTotal: 877.20, flags: [] },
+  pricing_osp: { perUnitGarment: 4.50, perUnitDecoration: 3.00, perUnitTotal: 11.43, setupFees: { screenSetup: 40 }, orderTotal: 725.80, flags: [] },
+  pricing_redwall: { perUnitGarment: 4.50, perUnitDecoration: 5.00, perUnitTotal: 13.02, setupFees: { screenSetup: 96 }, orderTotal: 877.20, flags: [] },
   recommended_supplier: 'OSP',
+  selected_supplier: null,
   qa_report: { status: 'APPROVED', failed: [], reviewer_notes: '' },
   email_draft: 'SUBJECT: Quote — Kohn Law\n\nHi Kohn,\n\nHere is your quote.',
   pdf_url: 'https://drive.google.com/file-123',
@@ -47,6 +50,55 @@ const MOCK_QUOTE_READY = {
     { timestamp: '2026-04-01T10:01:00Z', message: 'Pipeline started' },
     { timestamp: '2026-04-01T10:02:00Z', message: 'Pipeline complete' },
   ],
+}
+
+const MOCK_QUOTE_MULTI = {
+  id: 'GL-00002',
+  status: 'ready',
+  customer_name: 'Test Multi',
+  customer_email: 'multi@test.com',
+  project_name: 'Multi Product Test',
+  recommended_supplier: 'OSP',
+  selected_supplier: null,
+  profit_mode: 'per_shirt',
+  profit_value: 0,
+  intake_record: {
+    customer: { name: 'Test Multi', email: 'multi@test.com' },
+    products: [
+      {
+        brand_style: '3001CVC',
+        quantity: 60,
+        colors: ['Navy'],
+        size_breakdown: 'S:20,M:20,L:20',
+        product_type: 'adult',
+        decoration: { method: 'SCREEN_PRINT', locations: [{ name: 'left chest', color_count: 1 }] },
+        edge_cases: {},
+      },
+      {
+        brand_style: 'Gildan 5000',
+        quantity: 24,
+        colors: ['Black'],
+        size_breakdown: 'M:12,L:12',
+        product_type: 'adult',
+        decoration: { method: 'SCREEN_PRINT', locations: [{ name: 'full front', color_count: 2 }] },
+        edge_cases: {},
+      },
+    ],
+    flags: [],
+    status: 'READY_FOR_PRICING',
+  },
+  garment_data: [
+    { style: '3001CVC', requestedColor: 'Navy', available: true, standardPrice: 4.23 },
+    { style: 'Gildan 5000', requestedColor: 'Black', available: true, standardPrice: 3.50 },
+  ],
+  pricing_osp: [
+    { perUnitGarment: 4.23, perUnitDecoration: 3.00, perUnitProfit: 6.67, perUnitTotal: 13.90, setupFees: { screenSetup: 0, customPmsInk: 0 }, orderTotal: 834.00, flags: [] },
+    { perUnitGarment: 3.50, perUnitDecoration: 4.60, perUnitProfit: 6.67, perUnitTotal: 14.77, setupFees: { screenSetup: 40, customPmsInk: 0 }, orderTotal: 394.48, flags: [] },
+  ],
+  pricing_redwall: null,
+  qa_report: { status: 'APPROVED', passed_count: 10, total_checks: 10, failed: [], unable_to_verify: [] },
+  email_draft: 'SUBJECT: Test\n\nBody',
+  activity_log: [],
 }
 
 function renderViewQuote(quote = MOCK_QUOTE_DRAFT) {
@@ -167,5 +219,43 @@ describe('ViewQuote — manufacturer selection', () => {
     await user.click(screen.getByRole('button', { name: /edit/i }))
     expect(screen.getByRole('radio', { name: /osp/i })).toBeInTheDocument()
     expect(screen.getByRole('radio', { name: /redwall/i })).toBeInTheDocument()
+  })
+})
+
+describe('pricing breakdown', () => {
+  it('shows Garment Cost row for active supplier product', async () => {
+    renderViewQuote(MOCK_QUOTE_READY)
+    await waitFor(() => expect(screen.getByText('Garment Cost')).toBeInTheDocument())
+  })
+
+  it('shows Decoration Cost row', async () => {
+    renderViewQuote(MOCK_QUOTE_READY)
+    await waitFor(() => expect(screen.getByText('Decoration Cost')).toBeInTheDocument())
+  })
+
+  it('shows Giltee Profit row', async () => {
+    renderViewQuote(MOCK_QUOTE_READY)
+    await waitFor(() => expect(screen.getByText('Giltee Profit')).toBeInTheDocument())
+  })
+
+  it('shows Per Unit Total and Product Total rows', async () => {
+    renderViewQuote(MOCK_QUOTE_READY)
+    await waitFor(() => {
+      expect(screen.getByText('Per Unit Total')).toBeInTheDocument()
+      expect(screen.getByText(/Product Total/)).toBeInTheDocument()
+    })
+  })
+
+  it('shows Quote Grand Total', async () => {
+    renderViewQuote(MOCK_QUOTE_READY)
+    await waitFor(() => expect(screen.getByText('Quote Grand Total')).toBeInTheDocument())
+  })
+
+  it('shows a breakdown row for each product in a multi-product quote', async () => {
+    renderViewQuote(MOCK_QUOTE_MULTI)
+    await waitFor(() => {
+      expect(screen.getAllByText('Product 1 — 3001CVC').length).toBeGreaterThan(0)
+      expect(screen.getAllByText('Product 2 — Gildan 5000').length).toBeGreaterThan(0)
+    })
   })
 })
