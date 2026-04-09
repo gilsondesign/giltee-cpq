@@ -34,6 +34,16 @@ function fmt(n) {
   return `$${Number(n).toFixed(2)}`
 }
 
+function round2(n) { return Math.round(n * 100) / 100 }
+
+function calcPdfProfitPerUnit(mode, value, garmentPerUnit, decorationPerUnit, totalQty) {
+  const v = Number(value) || 0
+  if (mode === 'per_shirt') return v
+  if (mode === 'percent') return round2((garmentPerUnit + decorationPerUnit) * v / 100)
+  if (mode === 'fixed_total') return totalQty > 0 ? round2(v / totalQty) : 0
+  return 0
+}
+
 function parseSizeBreakdown(str) {
   if (!str || typeof str !== 'string') return []
   return str.split(',')
@@ -174,8 +184,13 @@ function buildPricingRows(pricing, qty, garmentStyle, method) {
 }
 
 // Single-supplier 4-col pricing table
-function singlePricingTable(pricing, qty, garmentStyle, method) {
+function singlePricingTable(pricing, qty, garmentStyle, method, profitPerUnit = 0) {
   const dataRows = buildPricingRows(pricing, qty, garmentStyle, method)
+  // Compute adjusted order total using user-set profit (not pipeline orderTotal)
+  const setupTotal = Object.values(pricing?.setupFees || {}).reduce((s, v) => s + (Number(v) || 0), 0)
+  const adjustedOrderTotal = round2(
+    ((pricing?.perUnitGarment || 0) + (pricing?.perUnitDecoration || 0) + profitPerUnit) * qty + setupTotal
+  )
   return {
     table: {
       widths: ['*', 50, 75, 75],
@@ -186,7 +201,7 @@ function singlePricingTable(pricing, qty, garmentStyle, method) {
         [
           { text: 'ORDER TOTAL', bold: true, fontSize: 10, colSpan: 3, fillColor: TOTAL_BG, margin: [4, 6, 4, 6] },
           {}, {},
-          { text: fmt(pricing?.orderTotal), bold: true, fontSize: 10, alignment: 'right', fillColor: TOTAL_BG, margin: [4, 6, 4, 6] },
+          { text: fmt(adjustedOrderTotal), bold: true, fontSize: 10, alignment: 'right', fillColor: TOTAL_BG, margin: [4, 6, 4, 6] },
         ],
       ],
     },
@@ -335,6 +350,21 @@ function buildDocDefinition(quote, supplier) {
 
   const activePricing = resolvedSupplier === 'REDWALL' ? rwPricing : ospPricing
 
+  // Profit settings from quote (defaults: per_shirt, $0)
+  const profitMode = quote.profit_mode || 'per_shirt'
+  const profitValue = Number(quote.profit_value) || 0
+  const totalQty = products.reduce((s, p) => s + (p.quantity || 0), 0)
+
+  function getProfitPerUnit(pricing) {
+    if (!pricing) return 0
+    return calcPdfProfitPerUnit(
+      profitMode, profitValue,
+      pricing.perUnitGarment || 0,
+      pricing.perUnitDecoration || 0,
+      totalQty,
+    )
+  }
+
   // ── Header ─────────────────────────────────────────────────────────────────
   const headerContent = [
     // Green band drawn via canvas
@@ -473,7 +503,7 @@ function buildDocDefinition(quote, supplier) {
   // ── Pricing ────────────────────────────────────────────────────────────────
   const pricingSection = [
     secLabel('Pricing'),
-    singlePricingTable(activePricing, qty, garmentStyle, method),
+    singlePricingTable(activePricing, qty, garmentStyle, method, getProfitPerUnit(activePricing)),
     ...(activePricing?.flags?.length
       ? activePricing.flags.map(f => ({ text: `* ${f}`, fontSize: 7.5, color: MID_GRAY, italics: true, margin: [0, 3, 0, 0] }))
       : []),
@@ -670,7 +700,7 @@ function buildDocDefinition(quote, supplier) {
         },
       ] : []),
       secLabel(`Pricing — Product ${pi + 1}`),
-      singlePricingTable(active_i, qty_i, gStyle, method_i),
+      singlePricingTable(active_i, qty_i, gStyle, method_i, getProfitPerUnit(active_i)),
     )
   }
 
@@ -683,7 +713,13 @@ function buildDocDefinition(quote, supplier) {
         body: [
           ...(ospArr.length > 0 ? [[
             cell('Combined Order Total', { bold: true, fontSize: 11 }),
-            cell(fmt((resolvedSupplier === 'REDWALL' ? rwArr : ospArr).reduce((s, p) => s + (p?.orderTotal || 0), 0)), { bold: true, fontSize: 11, alignment: 'right' }),
+            cell(fmt((resolvedSupplier === 'REDWALL' ? rwArr : ospArr).reduce((s, pricing, i) => {
+              if (!pricing) return s
+              const qty_i = (products[i]?.quantity) || 0
+              const profitPerUnit_i = getProfitPerUnit(pricing)
+              const setupTotal_i = Object.values(pricing.setupFees || {}).reduce((sf, v) => sf + (Number(v) || 0), 0)
+              return s + round2(((pricing.perUnitGarment || 0) + (pricing.perUnitDecoration || 0) + profitPerUnit_i) * qty_i + setupTotal_i)
+            }, 0)), { bold: true, fontSize: 11, alignment: 'right' }),
           ]] : []),
         ],
       },

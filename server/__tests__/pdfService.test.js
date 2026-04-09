@@ -75,6 +75,31 @@ describe('pdfService product type logic — source', () => {
   })
 })
 
+describe('pdfService profit adjustment', () => {
+  const source = require('fs').readFileSync(
+    require('path').join(__dirname, '../services/pdfService.js'),
+    'utf8'
+  )
+
+  it('does not include a "Giltee Profit" row label in the PDF source', () => {
+    expect(source).not.toContain('Giltee Profit')
+  })
+
+  it('reads profit_mode and profit_value from the quote object', () => {
+    expect(source).toContain('profit_mode')
+    expect(source).toContain('profit_value')
+  })
+
+  it('defines calcPdfProfitPerUnit function', () => {
+    expect(source).toContain('calcPdfProfitPerUnit')
+  })
+
+  it('uses perUnitGarment and perUnitDecoration in adjusted total calculation', () => {
+    expect(source).toContain('perUnitGarment')
+    expect(source).toContain('perUnitDecoration')
+  })
+})
+
 describe('pdfService.generateQuotePDF — supplier override', () => {
   it('uses OSP pricing when supplier is OSP', async () => {
     // recommended is OSP, so this just confirms default behavior
