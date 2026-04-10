@@ -64,7 +64,7 @@ CREATE INDEX IF NOT EXISTS idx_customers_company_name  ON customers (company_nam
 CREATE INDEX IF NOT EXISTS idx_customers_account_id    ON customers (account_id);
 CREATE INDEX IF NOT EXISTS idx_customers_contact_email ON customers (contact_email);
 
--- Quotes (schema only — fully populated in Plan B)
+-- Quotes — status values: draft | processing | ready | error | sent | approved
 CREATE TABLE IF NOT EXISTS quotes (
   id                   VARCHAR(20)  PRIMARY KEY,
   status               VARCHAR(20)  NOT NULL DEFAULT 'draft',
@@ -88,7 +88,9 @@ CREATE TABLE IF NOT EXISTS quotes (
   selected_supplier    VARCHAR(20),
   customer_id          INTEGER REFERENCES customers(id) ON DELETE SET NULL,
   profit_mode          TEXT        NOT NULL DEFAULT 'per_shirt',
-  profit_value         NUMERIC     NOT NULL DEFAULT 0
+  profit_value         NUMERIC     NOT NULL DEFAULT 0,
+  approved_at          TIMESTAMP,
+  approved_by          VARCHAR(255)
 );
 
 -- Indexes for common query patterns
