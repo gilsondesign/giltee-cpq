@@ -122,7 +122,7 @@ const UPDATABLE_QUOTE_COLUMNS = new Set([
   'raw_input', 'intake_record', 'garment_data', 'pricing_osp',
   'pricing_redwall', 'recommended_supplier', 'selected_supplier', 'qa_report',
   'email_draft', 'gmail_draft_id', 'pdf_url', 'activity_log', 'customer_id',
-  'profit_mode', 'profit_value'
+  'profit_mode', 'profit_value', 'approved_at', 'approved_by'
 ])
 
 const JSONB_COLUMNS = new Set([

@@ -71,3 +71,26 @@ describe('POST /api/quotes/:id/run — unauthenticated', () => {
     expect(res.status).toBe(401)
   })
 })
+
+describe('POST /api/quotes/:id/approve — unauthenticated', () => {
+  it('returns 401 when no session', async () => {
+    const res = await request(app).post('/api/quotes/GL-00001/approve')
+    expect(res.status).toBe(401)
+  })
+})
+
+describe('POST /api/quotes/:id/revoke — unauthenticated', () => {
+  it('returns 401 when no session', async () => {
+    const res = await request(app).post('/api/quotes/GL-00001/revoke')
+    expect(res.status).toBe(401)
+  })
+})
+
+describe('PATCH /api/quotes/:id with status=approved — unauthenticated', () => {
+  it('returns 401 when no session (approved is a valid status)', async () => {
+    const res = await request(app)
+      .patch('/api/quotes/GL-00001')
+      .send({ status: 'approved' })
+    expect(res.status).toBe(401)
+  })
+})
