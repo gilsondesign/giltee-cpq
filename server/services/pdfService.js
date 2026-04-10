@@ -136,27 +136,18 @@ function cell(text, opts = {}) {
 // ─── Pricing row builders ─────────────────────────────────────────────────────
 
 // Returns array of 4-cell row arrays for a single pricing block
-function buildPricingRows(pricing, qty, garmentStyle, method) {
+function buildPricingRows(pricing, qty, garmentStyle, method, profitPerUnit = 0) {
   if (!pricing) return []
   const rows = []
 
-  // Garment line
+  // Combined per-unit line (garment + decoration + profit — not broken down for customer)
+  const unitPrice = (pricing.perUnitGarment || 0) + (pricing.perUnitDecoration || 0) + profitPerUnit
   rows.push([
-    cell(garmentStyle || 'Garment'),
+    cell(garmentStyle || 'Per Unit'),
     cell(qty, { alignment: 'center' }),
-    cell(fmt(pricing.perUnitGarment), { alignment: 'right' }),
-    cell(fmt((pricing.perUnitGarment || 0) * qty), { alignment: 'right' }),
+    cell(fmt(unitPrice), { alignment: 'right' }),
+    cell(fmt(round2(unitPrice * qty)), { alignment: 'right' }),
   ])
-
-  // Decoration line
-  if (pricing.perUnitDecoration != null && pricing.perUnitDecoration > 0) {
-    rows.push([
-      cell(labelDecoration(method)),
-      cell(qty, { alignment: 'center' }),
-      cell(fmt(pricing.perUnitDecoration), { alignment: 'right' }),
-      cell(fmt((pricing.perUnitDecoration || 0) * qty), { alignment: 'right' }),
-    ])
-  }
 
   // One-time fees
   const fees = pricing.setupFees || {}
@@ -185,7 +176,7 @@ function buildPricingRows(pricing, qty, garmentStyle, method) {
 
 // Single-supplier 4-col pricing table
 function singlePricingTable(pricing, qty, garmentStyle, method, profitPerUnit = 0) {
-  const dataRows = buildPricingRows(pricing, qty, garmentStyle, method)
+  const dataRows = buildPricingRows(pricing, qty, garmentStyle, method, profitPerUnit)
   // Compute adjusted order total using user-set profit (not pipeline orderTotal)
   const setupTotal = Object.values(pricing?.setupFees || {}).reduce((s, v) => s + (Number(v) || 0), 0)
   const adjustedOrderTotal = round2(
@@ -403,6 +394,9 @@ function buildDocDefinition(quote, supplier) {
       },
     ]
 
+    // Underbase counts as a color for OSP pricing; Redwall does not charge for it
+    const isDarkOSP = !!(prod.edge_cases?.dark_garment) && resolvedSupplier !== 'REDWALL'
+
     const locations = locs_i.length > 0
       ? [
           secLabel('Print Locations'),
@@ -418,7 +412,7 @@ function buildDocDefinition(quote, supplier) {
                   thCell('NOTES'),
                 ],
                 ...locs_i.map((loc, i) => {
-                  const colors = loc.color_count || loc.colorCount || 1
+                  const colors = (loc.color_count || loc.colorCount || 1) + (isDarkOSP ? 1 : 0)
                   const printSize = loc.print_size || loc.printSize || 'STANDARD'
                   const bg = i % 2 === 1 ? STRIPE : null
                   return [
@@ -432,6 +426,7 @@ function buildDocDefinition(quote, supplier) {
             },
             layout: stdLayout,
           },
+          ...(isDarkOSP ? [{ text: '* Underbase added to color count for pricing.', fontSize: 7.5, color: MID_GRAY, italics: true, margin: [0, 3, 0, 0] }] : []),
         ]
       : []
 
