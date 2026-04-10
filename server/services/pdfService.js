@@ -332,24 +332,6 @@ function buildDocDefinition(quote, supplier) {
   const quoteDate = new Date(quote.created_at).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })
   const validThru = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })
 
-  // For single-product backward compat in the rest of the function
-  const product = products[0] || {}
-  const decoration = product.decoration || {}
-  const edgeCases = product.edge_cases || {}
-  const garment = garmentArr[0] || {}
-  const ospPricing = ospArr[0] || null
-  const rwPricing = rwArr[0] || null
-
-  const qty = product.quantity || 0
-  const method = decoration.method || 'SCREEN_PRINT'
-  const locations = (decoration.locations || []).filter(l => l.name)
-  const sizes = parseSizeBreakdown(product.size_breakdown)
-
-  const garmentStyle = garment.style || product.brand_style || '—'
-  const garmentColor = garment.requestedColor || (product.colors || [])[0] || '—'
-
-  const activePricing = resolvedSupplier === 'REDWALL' ? rwPricing : ospPricing
-
   // Profit settings from quote (defaults: per_shirt, $0)
   const profitMode = quote.profit_mode || 'per_shirt'
   const profitValue = Number(quote.profit_value) || 0
@@ -363,6 +345,154 @@ function buildDocDefinition(quote, supplier) {
       pricing.perUnitDecoration || 0,
       totalQty,
     )
+  }
+
+  // ── Per-product content builder ────────────────────────────────────────────
+  function buildProductContent(pi) {
+    const prod = products[pi] || {}
+    const dec = prod.decoration || {}
+    const g = garmentArr[pi] || {}
+    const osp_i = ospArr[pi] || null
+    const rw_i = rwArr[pi] || null
+    const qty_i = prod.quantity || 0
+    const method_i = dec.method || 'SCREEN_PRINT'
+    const locs_i = (dec.locations || []).filter(l => l.name)
+    const sizes_i = parseSizeBreakdown(prod.size_breakdown)
+    const gStyle = g.style || prod.brand_style || '—'
+    const gColor = g.requestedColor || (prod.colors || [])[0] || '—'
+    const active_i = resolvedSupplier === 'REDWALL' ? rw_i : osp_i
+
+    const sizeTable_i = sizes_i.length > 0
+      ? {
+          table: {
+            widths: sizes_i.map(() => '*'),
+            body: [
+              sizes_i.map(s => ({ text: s.size, fontSize: 8, bold: true, color: MID_GRAY, alignment: 'center', fillColor: '#F3F4F6', margin: [3, 3, 3, 3] })),
+              sizes_i.map(s => ({ text: String(s.qty), fontSize: 9, alignment: 'center', margin: [3, 3, 3, 3] })),
+            ],
+          },
+          layout: {
+            hLineColor: () => LIGHT_GRAY,
+            vLineColor: () => LIGHT_GRAY,
+            paddingTop: () => 0,
+            paddingBottom: () => 0,
+          },
+        }
+      : { text: 'Not specified', fontSize: 8, color: MID_GRAY, italics: true }
+
+    const summary = [
+      secLabel('Order Summary'),
+      {
+        columns: [
+          infoGrid([
+            ['Garment Style', gStyle],
+            ['Color', gColor],
+            ['Quantity', qty_i ? `${qty_i} units` : null],
+            ['Decoration', labelDecoration(method_i)],
+            ['Artwork Status', labelArtwork(dec.artwork_status)],
+          ]),
+          {
+            stack: [
+              miniLabel('Size Breakdown'),
+              sizeTable_i,
+            ],
+            width: 210,
+          },
+        ],
+        columnGap: 24,
+      },
+    ]
+
+    const locations = locs_i.length > 0
+      ? [
+          secLabel('Print Locations'),
+          {
+            table: {
+              widths: ['*', 60, 70, '*'],
+              headerRows: 1,
+              body: [
+                [
+                  thCell('LOCATION'),
+                  thCell('COLORS', { alignment: 'center' }),
+                  thCell('SIZE', { alignment: 'center' }),
+                  thCell('NOTES'),
+                ],
+                ...locs_i.map((loc, i) => {
+                  const colors = loc.color_count || loc.colorCount || 1
+                  const printSize = loc.print_size || loc.printSize || 'STANDARD'
+                  const bg = i % 2 === 1 ? STRIPE : null
+                  return [
+                    cell(loc.name, { fillColor: bg }),
+                    cell(colors, { alignment: 'center', fillColor: bg }),
+                    cell(printSize, { alignment: 'center', fillColor: bg }),
+                    cell(loc.notes || '', { color: MID_GRAY, fillColor: bg }),
+                  ]
+                }),
+              ],
+            },
+            layout: stdLayout,
+          },
+        ]
+      : []
+
+    const pricing = [
+      secLabel('Pricing'),
+      singlePricingTable(active_i, qty_i, gStyle, method_i, getProfitPerUnit(active_i)),
+      ...(active_i?.flags?.length
+        ? active_i.flags.map(f => ({ text: `* ${f}`, fontSize: 7.5, color: MID_GRAY, italics: true, margin: [0, 3, 0, 0] }))
+        : []),
+    ]
+
+    return [...summary, ...locations, ...pricing]
+  }
+
+  // ── Product card wrapper (multi-product only) ──────────────────────────────
+  function wrapInProductCard(n, qty_i, contentNodes) {
+    return {
+      table: {
+        widths: ['*'],
+        body: [
+          [
+            {
+              columns: [
+                { text: `Product ${n}`, bold: true, fontSize: 9, color: WHITE, margin: [6, 5, 0, 5] },
+                { text: `${qty_i} units`, fontSize: 7, color: '#D1FAE5', alignment: 'right', margin: [0, 6, 6, 5] },
+              ],
+              fillColor: FOREST_GREEN,
+              border: [true, true, true, false],
+            },
+          ],
+          [
+            {
+              stack: contentNodes,
+              margin: [6, 0, 6, 6],
+              border: [true, false, true, true],
+            },
+          ],
+        ],
+      },
+      layout: {
+        hLineWidth: () => 1.5,
+        vLineWidth: () => 1.5,
+        hLineColor: () => FOREST_GREEN,
+        vLineColor: () => FOREST_GREEN,
+        paddingTop: () => 0,
+        paddingBottom: () => 0,
+        paddingLeft: () => 0,
+        paddingRight: () => 0,
+      },
+      margin: [0, 8, 0, 4],
+    }
+  }
+
+  // ── Product sections (branched on count) ──────────────────────────────────
+  const productSections = []
+  if (products.length === 1) {
+    productSections.push(...buildProductContent(0))
+  } else {
+    for (let pi = 0; pi < products.length; pi++) {
+      productSections.push(wrapInProductCard(pi + 1, products[pi].quantity || 0, buildProductContent(pi)))
+    }
   }
 
   // ── Header ─────────────────────────────────────────────────────────────────
@@ -423,90 +553,6 @@ function buildDocDefinition(quote, supplier) {
       ],
       columnGap: 24,
     },
-  ]
-
-  // ── Order Summary ──────────────────────────────────────────────────────────
-  const sizeTable = sizes.length > 0
-    ? {
-        table: {
-          widths: sizes.map(() => '*'),
-          body: [
-            sizes.map(s => ({ text: s.size, fontSize: 8, bold: true, color: MID_GRAY, alignment: 'center', fillColor: '#F3F4F6', margin: [3, 3, 3, 3] })),
-            sizes.map(s => ({ text: String(s.qty), fontSize: 9, alignment: 'center', margin: [3, 3, 3, 3] })),
-          ],
-        },
-        layout: {
-          hLineColor: () => LIGHT_GRAY,
-          vLineColor: () => LIGHT_GRAY,
-          paddingTop: () => 0,
-          paddingBottom: () => 0,
-        },
-      }
-    : { text: 'Not specified', fontSize: 8, color: MID_GRAY, italics: true }
-
-  const summarySection = [
-    secLabel('Order Summary'),
-    {
-      columns: [
-        infoGrid([
-          ['Garment Style', garmentStyle],
-          ['Color', garmentColor],
-          ['Quantity', qty ? `${qty} units` : null],
-          ['Decoration', labelDecoration(method)],
-          ['Artwork Status', labelArtwork(decoration.artwork_status)],
-        ]),
-        {
-          stack: [
-            miniLabel('Size Breakdown'),
-            sizeTable,
-          ],
-          width: 210,
-        },
-      ],
-      columnGap: 24,
-    },
-  ]
-
-  // ── Print Locations ────────────────────────────────────────────────────────
-  const locationsSection = locations.length > 0
-    ? [
-        secLabel('Print Locations'),
-        {
-          table: {
-            widths: ['*', 60, 70, '*'],
-            headerRows: 1,
-            body: [
-              [
-                thCell('LOCATION'),
-                thCell('COLORS', { alignment: 'center' }),
-                thCell('SIZE', { alignment: 'center' }),
-                thCell('NOTES'),
-              ],
-              ...locations.map((loc, i) => {
-                const colors = loc.color_count || loc.colorCount || 1
-                const printSize = loc.print_size || loc.printSize || 'STANDARD'
-                const bg = i % 2 === 1 ? STRIPE : null
-                return [
-                  cell(loc.name, { fillColor: bg }),
-                  cell(colors, { alignment: 'center', fillColor: bg }),
-                  cell(printSize, { alignment: 'center', fillColor: bg }),
-                  cell(loc.notes || '', { color: MID_GRAY, fillColor: bg }),
-                ]
-              }),
-            ],
-          },
-          layout: stdLayout,
-        },
-      ]
-    : []
-
-  // ── Pricing ────────────────────────────────────────────────────────────────
-  const pricingSection = [
-    secLabel('Pricing'),
-    singlePricingTable(activePricing, qty, garmentStyle, method, getProfitPerUnit(activePricing)),
-    ...(activePricing?.flags?.length
-      ? activePricing.flags.map(f => ({ text: `* ${f}`, fontSize: 7.5, color: MID_GRAY, italics: true, margin: [0, 3, 0, 0] }))
-      : []),
   ]
 
   // ─── PAGE 2 ───────────────────────────────────────────────────────────────
@@ -632,78 +678,6 @@ function buildDocDefinition(quote, supplier) {
     },
   ]
 
-  // ─── Additional products (2, 3, …) ───────────────────────────────────────
-  const additionalProductSections = []
-  for (let pi = 1; pi < products.length; pi++) {
-    const prod = products[pi]
-    const dec = prod.decoration || {}
-    const ec = prod.edge_cases || {}
-    const g = garmentArr[pi] || {}
-    const osp_i = ospArr[pi] || null
-    const rw_i = rwArr[pi] || null
-    const qty_i = prod.quantity || 0
-    const method_i = dec.method || 'SCREEN_PRINT'
-    const locs_i = (dec.locations || []).filter(l => l.name)
-    const sizes_i = parseSizeBreakdown(prod.size_breakdown)
-    const gStyle = g.style || prod.brand_style || '—'
-    const gColor = g.requestedColor || (prod.colors || [])[0] || '—'
-    const active_i = resolvedSupplier === 'REDWALL' ? rw_i : osp_i
-
-    const sizeTable_i = sizes_i.length > 0
-      ? {
-          table: {
-            widths: sizes_i.map(() => '*'),
-            body: [
-              sizes_i.map(s => ({ text: s.size, fontSize: 8, bold: true, color: MID_GRAY, alignment: 'center', fillColor: '#F3F4F6', margin: [3, 3, 3, 3] })),
-              sizes_i.map(s => ({ text: String(s.qty), fontSize: 9, alignment: 'center', margin: [3, 3, 3, 3] })),
-            ],
-          },
-          layout: { hLineColor: () => LIGHT_GRAY, vLineColor: () => LIGHT_GRAY, paddingTop: () => 0, paddingBottom: () => 0 },
-        }
-      : { text: 'Not specified', fontSize: 8, color: MID_GRAY, italics: true }
-
-    additionalProductSections.push(
-      secLabel(`Product ${pi + 1}${gStyle !== '—' ? ` — ${gStyle}` : ''}`),
-      {
-        columns: [
-          infoGrid([
-            ['Garment Style', gStyle],
-            ['Color', gColor],
-            ['Quantity', qty_i ? `${qty_i} units` : null],
-            ['Decoration', labelDecoration(method_i)],
-            ['Artwork Status', labelArtwork(dec.artwork_status)],
-          ]),
-          { stack: [miniLabel('Size Breakdown'), sizeTable_i], width: 210 },
-        ],
-        columnGap: 24,
-      },
-      ...(locs_i.length > 0 ? [
-        secLabel('Print Locations'),
-        {
-          table: {
-            widths: ['*', 60, 70, '*'],
-            headerRows: 1,
-            body: [
-              [thCell('LOCATION'), thCell('COLORS', { alignment: 'center' }), thCell('SIZE', { alignment: 'center' }), thCell('NOTES')],
-              ...locs_i.map((loc, i) => {
-                const bg = i % 2 === 1 ? STRIPE : null
-                return [
-                  cell(loc.name, { fillColor: bg }),
-                  cell(loc.color_count || loc.colorCount || 1, { alignment: 'center', fillColor: bg }),
-                  cell(loc.print_size || loc.printSize || 'STANDARD', { alignment: 'center', fillColor: bg }),
-                  cell('', { fillColor: bg }),
-                ]
-              }),
-            ],
-          },
-          layout: stdLayout,
-        },
-      ] : []),
-      secLabel(`Pricing — Product ${pi + 1}`),
-      singlePricingTable(active_i, qty_i, gStyle, method_i, getProfitPerUnit(active_i)),
-    )
-  }
-
   // ─── Combined total row (multi-product) ───────────────────────────────────
   const combinedTotalSection = products.length > 1 ? [
     secLabel('Combined Order Total'),
@@ -742,12 +716,7 @@ function buildDocDefinition(quote, supplier) {
       // ── Page 1 ────────────────────────────────────────────────────────────
       ...headerContent,
       ...customerSection,
-      ...summarySection,
-      ...locationsSection,
-      ...pricingSection,
-
-      // ── Additional products ───────────────────────────────────────────────
-      ...additionalProductSections,
+      ...productSections,
       ...combinedTotalSection,
 
       // ── Page 2 (details) ──────────────────────────────────────────────────
