@@ -499,18 +499,18 @@ function buildDocDefinition(quote, supplier) {
   const headerContent = [
     // Green band drawn via canvas
     {
-      canvas: [{ type: 'rect', x: -40, y: -40, w: 595, h: 90, color: FOREST_GREEN }],
+      canvas: [{ type: 'rect', x: -40, y: -40, w: 595, h: 65, color: FOREST_GREEN }],
       margin: [0, 0, 0, 0],
     },
     // Logo + quote metadata over the band
     {
       columns: [
         logoSvg
-          ? { svg: logoSvg, width: 120, margin: [0, 8, 0, 8] }
-          : { text: 'GILTEE', fontSize: 20, bold: true, color: WHITE, margin: [0, 10, 0, 10] },
+          ? { svg: logoSvg, width: 60, margin: [0, 4, 0, 4] }
+          : { text: 'GILTEE', fontSize: 14, bold: true, color: WHITE, margin: [0, 6, 0, 6] },
         {
           stack: [
-            { text: 'CUSTOM APPAREL QUOTE', fontSize: 13, bold: true, color: WHITE, alignment: 'right' },
+            { text: 'CUSTOM APPAREL QUOTE', fontSize: 10, bold: true, color: WHITE, alignment: 'right' },
             { text: `Quote #${quote.id}`, fontSize: 9, color: WHITE, alignment: 'right', margin: [0, 3, 0, 0] },
             { text: `Date: ${quoteDate}`, fontSize: 9, color: WHITE, alignment: 'right' },
             { text: `Valid through: ${validThru}`, fontSize: 9, color: WHITE, alignment: 'right' },
@@ -518,7 +518,7 @@ function buildDocDefinition(quote, supplier) {
           ],
         },
       ],
-      margin: [0, -78, 0, 20],
+      margin: [0, -53, 0, 14],
     },
   ]
 
