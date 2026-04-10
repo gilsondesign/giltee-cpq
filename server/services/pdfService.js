@@ -782,4 +782,4 @@ function generateQuotePDF(quoteData, supplier) {
   })
 }
 
-module.exports = { generateQuotePDF }
+module.exports = { generateQuotePDF, buildDocDefinition }

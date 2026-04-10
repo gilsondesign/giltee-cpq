@@ -36,6 +36,46 @@ const SAMPLE_QUOTE = {
   created_at: '2026-04-03T00:00:00Z',
 }
 
+const MULTI_PRODUCT_QUOTE = {
+  id: 'GL-00002',
+  customer_name: 'Acme Corp',
+  customer_email: 'orders@acme.com',
+  project_name: 'Company Retreat 2026',
+  intake_record: {
+    customer: { name: 'Acme Corp', email: 'orders@acme.com', event_purpose: 'Retreat' },
+    products: [
+      {
+        brand_style: 'Gildan 5000',
+        quantity: 48,
+        colors: ['Forest Green'],
+        decoration: { method: 'SCREEN_PRINT', locations: [{ name: 'Front Center', colorCount: 3 }] },
+        edge_cases: {},
+      },
+      {
+        brand_style: 'Port Authority J317',
+        quantity: 24,
+        colors: ['Black'],
+        decoration: { method: 'EMBROIDERY', locations: [{ name: 'Left Chest', colorCount: 1 }] },
+        edge_cases: {},
+      },
+    ],
+  },
+  garment_data: [
+    { style: 'Gildan 5000', requestedColor: 'Forest Green', available: true },
+    { style: 'Port Authority J317', requestedColor: 'Black', available: true },
+  ],
+  pricing_osp: [
+    { perUnitGarment: 4.50, perUnitDecoration: 2.10, setupFees: { screenSetup: 45 }, orderTotal: 361.80, flags: [] },
+    { perUnitGarment: 38.00, perUnitDecoration: 8.50, setupFees: { digitizing: 50 }, orderTotal: 1166.00, flags: [] },
+  ],
+  pricing_redwall: [
+    { perUnitGarment: 5.00, perUnitDecoration: 2.50, setupFees: { screenSetup: 60 }, orderTotal: 420.00, flags: [] },
+    { perUnitGarment: 40.00, perUnitDecoration: 9.00, setupFees: { digitizing: 60 }, orderTotal: 1236.00, flags: [] },
+  ],
+  recommended_supplier: 'OSP',
+  created_at: '2026-04-10T00:00:00Z',
+}
+
 describe('pdfService.generateQuotePDF', () => {
   it('returns a Buffer', async () => {
     const buffer = await pdfService.generateQuotePDF(SAMPLE_QUOTE)
@@ -117,5 +157,45 @@ describe('pdfService.generateQuotePDF — supplier override', () => {
   it('falls back to recommended_supplier when no supplier arg is provided', async () => {
     const buffer = await pdfService.generateQuotePDF(SAMPLE_QUOTE)
     expect(Buffer.isBuffer(buffer)).toBe(true)
+  })
+})
+
+describe('pdfService.buildDocDefinition — multi-product card layout', () => {
+  // Helper: find card table nodes in doc content
+  function findCardTables(doc) {
+    return doc.content.filter(node =>
+      node?.table?.body?.[0]?.[0]?.fillColor === '#104F42' &&
+      node?.table?.body?.[0]?.[0]?.columns?.[0]?.text?.startsWith('Product ')
+    )
+  }
+
+  it('single-product quote: no product card tables in content', () => {
+    const doc = pdfService.buildDocDefinition(SAMPLE_QUOTE, 'OSP')
+    expect(findCardTables(doc)).toHaveLength(0)
+  })
+
+  it('multi-product quote: content has one card table per product', () => {
+    const doc = pdfService.buildDocDefinition(MULTI_PRODUCT_QUOTE, 'OSP')
+    expect(findCardTables(doc)).toHaveLength(2)
+  })
+
+  it('multi-product card headers show correct product numbers', () => {
+    const doc = pdfService.buildDocDefinition(MULTI_PRODUCT_QUOTE, 'OSP')
+    const cards = findCardTables(doc)
+    expect(cards[0].table.body[0][0].columns[0].text).toBe('Product 1')
+    expect(cards[1].table.body[0][0].columns[0].text).toBe('Product 2')
+  })
+
+  it('multi-product card headers show correct unit counts', () => {
+    const doc = pdfService.buildDocDefinition(MULTI_PRODUCT_QUOTE, 'OSP')
+    const cards = findCardTables(doc)
+    expect(cards[0].table.body[0][0].columns[1].text).toBe('48 units')
+    expect(cards[1].table.body[0][0].columns[1].text).toBe('24 units')
+  })
+
+  it('multi-product quote renders to PDF without throwing', async () => {
+    const buffer = await pdfService.generateQuotePDF(MULTI_PRODUCT_QUOTE, 'OSP')
+    expect(Buffer.isBuffer(buffer)).toBe(true)
+    expect(buffer.length).toBeGreaterThan(1024)
   })
 })
