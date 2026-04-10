@@ -321,7 +321,6 @@ function buildDocDefinition(quote, supplier) {
   const isRush = !!(customer.rush)
 
   const quoteDate = new Date(quote.created_at).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })
-  const validThru = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })
 
   // Profit settings from quote (defaults: per_shirt, $0)
   const profitMode = quote.profit_mode || 'per_shirt'
@@ -508,7 +507,6 @@ function buildDocDefinition(quote, supplier) {
             { text: 'CUSTOM APPAREL QUOTE', fontSize: 10, bold: true, color: WHITE, alignment: 'right' },
             { text: `Quote #${quote.id}`, fontSize: 9, color: WHITE, alignment: 'right', margin: [0, 3, 0, 0] },
             { text: `Date: ${quoteDate}`, fontSize: 9, color: WHITE, alignment: 'right' },
-            { text: `Valid through: ${validThru}`, fontSize: 9, color: WHITE, alignment: 'right' },
             ...(isRush ? [{ text: '  RUSH ORDER  ', fontSize: 8, bold: true, background: '#F59E0B', color: '#111827', alignment: 'right', margin: [0, 4, 0, 0] }] : []),
           ],
         },
