@@ -170,4 +170,42 @@ router.post('/:id/run', async (req, res, next) => {
   }
 })
 
+// POST /api/quotes/:id/approve — mark quote as approved
+router.post('/:id/approve', async (req, res, next) => {
+  try {
+    const quote = await queries.getQuote(req.params.id)
+    if (!quote) return res.status(404).json({ error: 'Quote not found' })
+    if (quote.status !== 'ready') {
+      return res.status(400).json({ error: 'Quote must be ready to approve' })
+    }
+    const updated = await queries.updateQuote(req.params.id, {
+      status: 'approved',
+      approved_at: new Date().toISOString(),
+      approved_by: req.user?.email || req.user?.name || 'Unknown',
+    })
+    res.json(updated)
+  } catch (err) {
+    next(err)
+  }
+})
+
+// POST /api/quotes/:id/revoke — revert approved quote back to ready
+router.post('/:id/revoke', async (req, res, next) => {
+  try {
+    const quote = await queries.getQuote(req.params.id)
+    if (!quote) return res.status(404).json({ error: 'Quote not found' })
+    if (quote.status !== 'approved') {
+      return res.status(400).json({ error: 'Quote must be approved to revoke' })
+    }
+    const updated = await queries.updateQuote(req.params.id, {
+      status: 'ready',
+      approved_at: null,
+      approved_by: null,
+    })
+    res.json(updated)
+  } catch (err) {
+    next(err)
+  }
+})
+
 module.exports = router
