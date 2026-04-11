@@ -178,10 +178,11 @@ router.post('/:id/approve', async (req, res, next) => {
     if (quote.status !== 'ready') {
       return res.status(400).json({ error: 'Quote must be ready to approve' })
     }
+    const approved_by = req.user?.email || req.user?.name || null
     const updated = await queries.updateQuote(req.params.id, {
       status: 'approved',
       approved_at: new Date().toISOString(),
-      approved_by: req.user?.email || req.user?.name || 'Unknown',
+      approved_by,
     })
     res.json(updated)
   } catch (err) {
