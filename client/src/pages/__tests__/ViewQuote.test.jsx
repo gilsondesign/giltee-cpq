@@ -382,6 +382,29 @@ describe('ViewQuote — approval buttons', () => {
     })
   })
 
+  it('keeps modal open and shows error when approve fails', async () => {
+    const user = userEvent.setup()
+    global.fetch = vi.fn()
+      .mockResolvedValueOnce({ ok: true, json: async () => MOCK_QUOTE_READY })                         // initial GET
+      .mockResolvedValueOnce({ ok: false, json: async () => ({ error: 'Server error' }) })             // POST /approve fails
+    render(
+      <AuthContext.Provider value={{ user: mockUser, setUser: vi.fn() }}>
+        <MemoryRouter initialEntries={['/quotes/GL-00001']}>
+          <Routes>
+            <Route path="/quotes/:id" element={<ViewQuote />} />
+          </Routes>
+        </MemoryRouter>
+      </AuthContext.Provider>
+    )
+    await waitFor(() => screen.getByRole('button', { name: /approve quote/i }))
+    await user.click(screen.getByRole('button', { name: /approve quote/i }))
+    await user.click(screen.getByRole('button', { name: /^approve$/i }))
+    await waitFor(() => {
+      expect(screen.getByText('Approve this quote?')).toBeInTheDocument()
+      expect(screen.getByText('Server error')).toBeInTheDocument()
+    })
+  })
+
   it('edit on an approved quote sends approved_at: null and approved_by: null', async () => {
     const user = userEvent.setup()
     global.fetch = vi.fn()
