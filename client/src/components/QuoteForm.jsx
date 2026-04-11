@@ -176,8 +176,8 @@ function ProductCard({ product, index, onChange, onRemove, canRemove, selectedSu
 
   useEffect(() => {
     const { brand_style, product_type, colors } = product
+    setStyleMismatchWarning(null)
     if (!brand_style || (product_type !== 'youth' && product_type !== 'toddler')) {
-      setStyleMismatchWarning(null)
       return
     }
     const controller = new AbortController()
