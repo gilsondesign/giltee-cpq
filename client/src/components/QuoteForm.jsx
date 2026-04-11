@@ -285,26 +285,36 @@ function ProductCard({ product, index, onChange, onRemove, canRemove, selectedSu
             </div>
 
             {/* Size grid */}
-            {product.product_type !== 'headwear' && (
-              <div className="border-b border-outline-variant/20 pb-3 mt-3">
-                <p className="text-xs text-on-surface-variant mb-2">Size breakdown <span className="text-on-surface-variant/60">(qty per size)</span></p>
-                <div className="flex flex-wrap gap-2">
-                  {currentSizes.map(size => (
-                    <div key={size} className="flex flex-col items-center gap-1">
-                      <span className={`text-xs font-medium ${['2XL', '3XL', '4XL', '5XL'].includes(size) ? 'text-secondary' : 'text-on-surface-variant'}`}>{size}</span>
-                      <input
-                        type="number" min="0"
-                        title={`${size} size quantity`}
-                        value={product.sizes?.[size] || ''}
-                        onChange={e => set('sizes', { ...product.sizes, [size]: e.target.value })}
-                        className="w-14 text-sm text-center bg-surface border border-outline-variant rounded px-1 py-1 text-on-surface focus:outline-none focus:ring-1 focus:ring-primary"
-                        placeholder="0"
-                      />
-                    </div>
-                  ))}
+            {product.product_type !== 'headwear' && (() => {
+              const sizeSum = Object.values(product.sizes || {}).map(v => parseInt(v, 10) || 0).reduce((a, b) => a + b, 0)
+              const totalQty = parseInt(product.quantity, 10) || 0
+              const sizeMismatch = sizeSum > 0 && sizeSum !== totalQty
+              return (
+                <div className="border-b border-outline-variant/20 pb-3 mt-3">
+                  <p className="text-xs text-on-surface-variant mb-2">Size breakdown <span className="text-on-surface-variant/60">(qty per size)</span></p>
+                  <div className="flex flex-wrap gap-2">
+                    {currentSizes.map(size => (
+                      <div key={size} className="flex flex-col items-center gap-1">
+                        <span className={`text-xs font-medium ${['2XL', '3XL', '4XL', '5XL'].includes(size) ? 'text-secondary' : 'text-on-surface-variant'}`}>{size}</span>
+                        <input
+                          type="number" min="0"
+                          title={`${size} size quantity`}
+                          value={product.sizes?.[size] || ''}
+                          onChange={e => set('sizes', { ...product.sizes, [size]: e.target.value })}
+                          className="w-14 text-sm text-center bg-surface border border-outline-variant rounded px-1 py-1 text-on-surface focus:outline-none focus:ring-1 focus:ring-primary"
+                          placeholder="0"
+                        />
+                      </div>
+                    ))}
+                  </div>
+                  {sizeMismatch && (
+                    <p role="alert" className="text-sm text-red-600 mt-2">
+                      Size quantities add up to {sizeSum}, but total quantity is {totalQty}.
+                    </p>
+                  )}
                 </div>
-              </div>
-            )}
+              )
+            })()}
           </div>
 
           {/* Decoration */}
