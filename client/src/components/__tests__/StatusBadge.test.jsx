@@ -21,8 +21,11 @@ describe('StatusBadge', () => {
     expect(screen.getByText('unknown')).toBeInTheDocument()
   })
 
-  it('renders the approved status text', () => {
+  it('renders the approved status with correct style', () => {
     render(<StatusBadge status="approved" />)
-    expect(screen.getByText('approved')).toBeInTheDocument()
+    const badge = screen.getByText('approved')
+    expect(badge).toBeInTheDocument()
+    expect(badge).toHaveClass('bg-secondary')
+    expect(badge).toHaveClass('text-on-primary')
   })
 })
