@@ -25,7 +25,7 @@ describe('StatusBadge', () => {
     render(<StatusBadge status="approved" />)
     const badge = screen.getByText('approved')
     expect(badge).toBeInTheDocument()
-    expect(badge).toHaveClass('bg-secondary')
+    expect(badge).toHaveClass('bg-primary-container')
     expect(badge).toHaveClass('text-on-primary')
   })
 })

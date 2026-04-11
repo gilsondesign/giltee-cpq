@@ -907,7 +907,7 @@ export default function ViewQuote() {
         {/* ── Confirm Modal ───────────────────────────────────────────── */}
         {confirmModal && (
           <div className="fixed inset-0 z-50 flex items-center justify-center bg-surface/60 backdrop-blur-sm">
-            <div className="bg-surface-container rounded-xl border border-outline-variant shadow-xl p-6 w-full max-w-sm mx-4">
+            <div className="bg-surface-container rounded border border-outline-variant shadow-xl p-6 w-full max-w-sm mx-4">
               <h2 className="text-base font-semibold text-on-surface mb-2">
                 {confirmModal === 'approve' ? 'Approve this quote?' : 'Revoke approval?'}
               </h2>

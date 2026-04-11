@@ -4,7 +4,7 @@ const STATUS_STYLES = {
   ready:      'bg-secondary-fixed text-primary',
   error:      'bg-error-container text-on-error-container',
   sent:       'bg-primary text-on-primary',
-  approved:   'bg-secondary text-on-primary',
+  approved:   'bg-primary-container text-on-primary',
 }
 
 export default function StatusBadge({ status }) {
