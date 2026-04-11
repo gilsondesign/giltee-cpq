@@ -136,7 +136,7 @@ function cell(text, opts = {}) {
 // ─── Pricing row builders ─────────────────────────────────────────────────────
 
 // Returns array of 4-cell row arrays for a single pricing block
-function buildPricingRows(pricing, qty, garmentStyle, method, profitPerUnit = 0) {
+function buildPricingRows(pricing, qty, garmentStyle, method, profitPerUnit = 0, extendedSizeRows = []) {
   if (!pricing) return []
   const rows = []
 
@@ -148,6 +148,16 @@ function buildPricingRows(pricing, qty, garmentStyle, method, profitPerUnit = 0)
     cell(fmt(unitPrice), { alignment: 'right' }),
     cell(fmt(round2(unitPrice * qty)), { alignment: 'right' }),
   ])
+
+  // Extended size upcharge rows
+  for (const { size, qty: eQty, upcharge } of extendedSizeRows) {
+    rows.push([
+      cell(`${size} upcharge`),
+      cell(eQty, { alignment: 'center' }),
+      cell(fmt(upcharge), { alignment: 'right' }),
+      cell(fmt(round2(upcharge * eQty)), { alignment: 'right' }),
+    ])
+  }
 
   // One-time fees
   const fees = pricing.setupFees || {}
@@ -175,12 +185,13 @@ function buildPricingRows(pricing, qty, garmentStyle, method, profitPerUnit = 0)
 }
 
 // Single-supplier 4-col pricing table
-function singlePricingTable(pricing, qty, garmentStyle, method, profitPerUnit = 0) {
-  const dataRows = buildPricingRows(pricing, qty, garmentStyle, method, profitPerUnit)
+function singlePricingTable(pricing, qty, garmentStyle, method, profitPerUnit = 0, extendedSizeRows = []) {
+  const dataRows = buildPricingRows(pricing, qty, garmentStyle, method, profitPerUnit, extendedSizeRows)
   // Compute adjusted order total using user-set profit (not pipeline orderTotal)
   const setupTotal = Object.values(pricing?.setupFees || {}).reduce((s, v) => s + (Number(v) || 0), 0)
+  const extendedTotal = extendedSizeRows.reduce((s, { qty: eQty, upcharge }) => s + round2(upcharge * eQty), 0)
   const adjustedOrderTotal = round2(
-    ((pricing?.perUnitGarment || 0) + (pricing?.perUnitDecoration || 0) + profitPerUnit) * qty + setupTotal
+    ((pricing?.perUnitGarment || 0) + (pricing?.perUnitDecoration || 0) + profitPerUnit) * qty + setupTotal + extendedTotal
   )
   return {
     table: {
@@ -370,6 +381,11 @@ function buildDocDefinition(quote, supplier) {
         }
       : { text: 'Not specified', fontSize: 8, color: MID_GRAY, italics: true }
 
+    const productTypeVal = prod.product_type || (prod.youth_sizes ? 'youth' : null)
+    const productTypeLabel = productTypeVal
+      ? (productTypeVal.charAt(0).toUpperCase() + productTypeVal.slice(1))
+      : null
+
     const summary = [
       secLabel('Order Summary'),
       {
@@ -380,6 +396,7 @@ function buildDocDefinition(quote, supplier) {
             ['Quantity', qty_i ? `${qty_i} units` : null],
             ['Decoration', labelDecoration(method_i)],
             ['Artwork Status', labelArtwork(dec.artwork_status)],
+            ...(productTypeLabel ? [['Product Type', productTypeLabel]] : []),
           ]),
           {
             stack: [
@@ -425,13 +442,25 @@ function buildDocDefinition(quote, supplier) {
             },
             layout: stdLayout,
           },
-          ...(isDarkOSP ? [{ text: '* Underbase added to color count for pricing.', fontSize: 7.5, color: MID_GRAY, italics: true, margin: [0, 3, 0, 0] }] : []),
         ]
       : []
 
+    // Extended size upcharge rows (e.g. 2XL/3XL carry higher garment cost)
+    const extendedSizeRows = []
+    if (g.extendedSkus && g.extendedSkus.length > 0 && g.standardPrice != null) {
+      for (const sku of g.extendedSkus) {
+        const orderedEntry = sizes_i.find(s => s.size === sku.size)
+        const orderedQty = orderedEntry ? orderedEntry.qty : 0
+        if (orderedQty > 0) {
+          const upcharge = round2(sku.price - g.standardPrice)
+          if (upcharge > 0) extendedSizeRows.push({ size: sku.size, qty: orderedQty, upcharge })
+        }
+      }
+    }
+
     const pricing = [
       secLabel('Pricing'),
-      singlePricingTable(active_i, qty_i, gStyle, method_i, getProfitPerUnit(active_i)),
+      singlePricingTable(active_i, qty_i, gStyle, method_i, getProfitPerUnit(active_i), extendedSizeRows),
       ...(active_i?.flags?.length
         ? active_i.flags.map(f => ({ text: `* ${f}`, fontSize: 7.5, color: MID_GRAY, italics: true, margin: [0, 3, 0, 0] }))
         : []),
@@ -548,52 +577,6 @@ function buildDocDefinition(quote, supplier) {
     },
   ]
 
-  // ─── PAGE 2 ───────────────────────────────────────────────────────────────
-
-  // ── Decoration Details (all products) ────────────────────────────────────
-  const decorationSection = []
-  products.forEach((prod, pi) => {
-    const dec = prod.decoration || {}
-    const ec = prod.edge_cases || {}
-    const prefix = products.length > 1 ? `Product ${pi + 1} — ` : ''
-    const decRows = [
-      [`${prefix}Decoration Method`, labelDecoration(dec.method)],
-      ['Artwork Status', labelArtwork(dec.artwork_status)],
-    ]
-    if (dec.stitch_count) decRows.push(['Stitch Count', `${Number(dec.stitch_count).toLocaleString()} stitches`])
-    if (dec.special_inks?.length) decRows.push(['Special Inks / Effects', dec.special_inks.join(', ')])
-    if (ec.dark_garment) decRows.push(['Dark Garment', 'Yes — underbase added to color count'])
-    if (ec.individual_names) decRows.push(['Individual Names / Numbers', 'Yes — personalization required per piece'])
-    if (ec.extended_sizes) decRows.push(['Extended Sizes (2XL+)', 'Yes — may carry an additional per-unit charge'])
-    const productType = prod.product_type || (prod.youth_sizes ? 'youth' : null)
-    if (productType && productType !== 'adult') {
-      const label = productType.charAt(0).toUpperCase() + productType.slice(1)
-      decRows.push(['Product Type', label])
-    }
-    decorationSection.push(
-      secLabel(products.length > 1 ? `Decoration Details — Product ${pi + 1}` : 'Decoration Details'),
-      infoGrid(decRows),
-    )
-  })
-
-  // ── Garment Availability (all products) ──────────────────────────────────
-  const availabilityRows = garmentArr
-    .map((g, pi) => {
-      if (g.available == null) return null
-      const prod = products[pi] || {}
-      const gStyle = g.style || prod.brand_style || '—'
-      const gColor = g.requestedColor || (prod.colors || [])[0] || '—'
-      return [
-        products.length > 1 ? `Product ${pi + 1}: ${gStyle} / ${gColor}` : `${gStyle} / ${gColor}`,
-        g.available ? 'Confirmed available' : 'Not confirmed — requires manual check',
-      ]
-    })
-    .filter(Boolean)
-
-  const availabilitySection = availabilityRows.length > 0
-    ? [secLabel('Garment Availability'), infoGrid(availabilityRows)]
-    : []
-
   // ── Production Timeline ────────────────────────────────────────────────────
   const timelineRows = [
     ['Standard Turnaround', '10–14 business days after artwork approval and payment received'],
@@ -706,16 +689,10 @@ function buildDocDefinition(quote, supplier) {
       ],
     }),
     content: [
-      // ── Page 1 ────────────────────────────────────────────────────────────
       ...headerContent,
       ...customerSection,
       ...productSections,
       ...combinedTotalSection,
-
-      // ── Page 2 (details) ──────────────────────────────────────────────────
-      { text: '', pageBreak: 'before' },
-      ...decorationSection,
-      ...availabilitySection,
       ...notesSection,
       ...timelineSection,
       ...tcSection,

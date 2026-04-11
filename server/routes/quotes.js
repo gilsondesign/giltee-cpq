@@ -155,6 +155,17 @@ router.post('/:id/qa', async (req, res, next) => {
   }
 })
 
+// POST /api/quotes/:id/parse — parse raw inquiry into intake_record (pre-pipeline step)
+router.post('/:id/parse', async (req, res, next) => {
+  try {
+    const quote = await pipelineService.parseIntake(req.params.id)
+    if (!quote) return res.status(404).json({ error: 'Quote not found' })
+    res.json(quote)
+  } catch (err) {
+    next(err)
+  }
+})
+
 // POST /api/quotes/:id/run — trigger the AI pipeline
 router.post('/:id/run', async (req, res, next) => {
   try {
@@ -165,6 +176,18 @@ router.post('/:id/run', async (req, res, next) => {
     }
     const completed = await pipelineService.runQuotePipeline(req.params.id)
     res.json(completed)
+  } catch (err) {
+    next(err)
+  }
+})
+
+// DELETE /api/quotes/:id — permanently delete a quote
+router.delete('/:id', async (req, res, next) => {
+  try {
+    const quote = await queries.getQuote(req.params.id)
+    if (!quote) return res.status(404).json({ error: 'Quote not found' })
+    await queries.deleteQuote(req.params.id)
+    res.json({ deleted: req.params.id })
   } catch (err) {
     next(err)
   }

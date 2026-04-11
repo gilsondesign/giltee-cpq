@@ -58,6 +58,70 @@ function normalizeIntakeRecord(ir) {
   }
 }
 
+// ─── Intake-only parse (pre-pipeline step) ───────────────────────────────────
+
+async function parseIntake(quoteId) {
+  const quote = await queries.getQuote(quoteId)
+  if (!quote) throw new Error(`Quote ${quoteId} not found`)
+  if (!quote.raw_input) throw new Error(`Quote ${quoteId} has no raw input to parse`)
+
+  if (quote.intake_record) {
+    return queries.getQuote(quoteId) // already parsed, return as-is
+  }
+
+  const intakeText = await claudeService.callClaude({
+    systemPrompt: skills.INTAKE,
+    userPrompt: `Process the following customer inquiry and extract a structured intake record.
+
+Customer inquiry:
+${quote.raw_input}
+
+Return ONLY valid JSON matching this schema (use null for unknown fields):
+{
+  "customer": { "name": null, "email": null, "event_purpose": null, "deadline": null, "rush": null, "returning": null },
+  "products": [
+    {
+      "brand_style": null,
+      "quantity": null,
+      "size_breakdown": null,
+      "colors": [],
+      "product_type": "adult",
+      "decoration": {
+        "method": null,
+        "locations": [],
+        "artwork_status": "UNKNOWN",
+        "special_inks": [],
+        "stitch_count": null
+      },
+      "edge_cases": { "extended_sizes": false, "dark_garment": null, "individual_names": false, "multiple_garment_colors": false, "garment_color_count": 1, "shipping_destination": null }
+    }
+  ],
+  "flags": [],
+  "status": "READY_FOR_PRICING",
+  "missing_fields": []
+}
+If the inquiry mentions multiple garment styles or groups, include one object per product in the "products" array.
+For decoration.method use: SCREEN_PRINT, DTF, DTG, or EMBROIDERY
+For decoration.locations[].print_size use: STANDARD, OVERSIZED, or JUMBO
+For size_breakdown: extract size quantities (e.g. "10 smalls, 20 mediums" → "S:10, M:20"). Codes: XS, S, M, L, XL, 2XL, 3XL, 4XL, 5XL, YXS, YS, YM, YL, YXL, 2T, 4T, 6T.
+For product_type: use 'adult' (default), 'youth' (for youth garments), 'toddler' (for toddler garments), or 'headwear' (for hats/caps).`,
+  })
+
+  const parsed = claudeService.parseJSONFromText(intakeText)
+  let intake_record = normalizeIntakeRecord(parsed)
+
+  const updates = { intake_record }
+  if (intake_record.customer?.name && !quote.customer_name) updates.customer_name = intake_record.customer.name
+  if (intake_record.customer?.email && !quote.customer_email) updates.customer_email = intake_record.customer.email
+  if (!intake_record.customer) intake_record.customer = {}
+  if (!intake_record.customer.name && quote.customer_name) intake_record.customer.name = quote.customer_name
+  if (!intake_record.customer.email && quote.customer_email) intake_record.customer.email = quote.customer_email
+  updates.intake_record = intake_record
+
+  await queries.updateQuote(quoteId, updates)
+  return queries.getQuote(quoteId)
+}
+
 // ─── Pipeline ─────────────────────────────────────────────────────────────────
 
 async function runQuotePipeline(quoteId) {
@@ -358,4 +422,4 @@ For status use: APPROVED, NEEDS_FIXES, or BLOCKED`,
   return qa_report
 }
 
-module.exports = { runQuotePipeline, runQACheck }
+module.exports = { runQuotePipeline, runQACheck, parseIntake }

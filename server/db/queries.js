@@ -148,8 +148,12 @@ async function updateQuote(id, fields) {
   return rows[0] || null
 }
 
+async function deleteQuote(id) {
+  await pool.query('DELETE FROM quotes WHERE id = $1', [id])
+}
+
 module.exports = {
   createUser, getUserById, getUserByEmail, updateUserStatus, updateUserLastLogin, listUsers,
   createInvitation, getInvitationByToken, acceptInvitation,
-  getNextQuoteId, createQuote, getQuote, listQuotes, updateQuote
+  getNextQuoteId, createQuote, getQuote, listQuotes, updateQuote, deleteQuote
 }

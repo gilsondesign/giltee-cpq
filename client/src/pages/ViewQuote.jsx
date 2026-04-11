@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react'
-import { Link, useParams } from 'react-router-dom'
+import { Link, useParams, useSearchParams, useNavigate } from 'react-router-dom'
 import NavBar from '../components/NavBar'
 import StatusBadge from '../components/StatusBadge'
 import QuoteForm, { buildEditFields, serializeProduct, normalizeIntakeRecord } from '../components/QuoteForm'
@@ -30,6 +30,7 @@ function InfoRow({ label, value }) {
 
 export default function ViewQuote() {
   const { id } = useParams()
+  const [searchParams] = useSearchParams()
   const [quote, setQuote] = useState(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
@@ -45,9 +46,12 @@ export default function ViewQuote() {
   const [profitMode, setProfitMode] = useState('per_shirt')
   const [profitValue, setProfitValue] = useState('0')
   const [qaChecking, setQaChecking] = useState(false)
-  const [confirmModal, setConfirmModal] = useState(null) // 'approve' | 'revoke' | null
+  const [confirmModal, setConfirmModal] = useState(null) // 'approve' | 'revoke' | 'delete' | null
   const [approveLoading, setApproveLoading] = useState(false)
   const [approveError, setApproveError] = useState(null)
+  const [deleteLoading, setDeleteLoading] = useState(false)
+  const [deleteError, setDeleteError] = useState(null)
+  const navigate = useNavigate()
 
   function saveProfitSettings(mode, value) {
     fetch(`/api/quotes/${id}`, {
@@ -58,17 +62,26 @@ export default function ViewQuote() {
     }).catch(() => {}) // silent — live calc doesn't require save success
   }
 
-  const fetchQuote = useCallback(() => {
+  const fetchQuote = useCallback((openEdit = false) => {
     fetch(`/api/quotes/${id}`, { credentials: 'include' })
       .then(r => {
         if (!r.ok) throw new Error('Failed to load quote')
         return r.json()
       })
-      .then(data => { setQuote(data); setLoading(false) })
+      .then(data => {
+        setQuote(data)
+        setLoading(false)
+        if (openEdit) {
+          setEditFields(buildEditFields(data))
+          setEditing(true)
+        }
+      })
       .catch(err => { setError(err.message); setLoading(false) })
-  }, [id])
+  }, [id]) // eslint-disable-line react-hooks/exhaustive-deps
 
-  useEffect(() => { fetchQuote() }, [fetchQuote])
+  useEffect(() => {
+    fetchQuote(searchParams.get('edit') === 'true')
+  }, [fetchQuote]) // eslint-disable-line react-hooks/exhaustive-deps
 
   // Poll while processing
   useEffect(() => {
@@ -218,6 +231,25 @@ export default function ViewQuote() {
       setApproveError(err.message)
     } finally {
       setApproveLoading(false)
+    }
+  }
+
+  async function handleDelete() {
+    setDeleteLoading(true)
+    setDeleteError(null)
+    try {
+      const res = await fetch(`/api/quotes/${id}`, {
+        method: 'DELETE',
+        credentials: 'include',
+      })
+      if (!res.ok) {
+        const data = await res.json()
+        throw new Error(data.error || 'Delete failed')
+      }
+      navigate('/')
+    } catch (err) {
+      setDeleteError(err.message)
+      setDeleteLoading(false)
     }
   }
 
@@ -464,6 +496,14 @@ export default function ViewQuote() {
                 className="text-sm text-on-surface-variant hover:text-on-surface transition-colors"
               >
                 Cancel
+              </button>
+              <div className="flex-1" />
+              <button
+                onClick={() => { setDeleteError(null); setConfirmModal('delete') }}
+                disabled={saving}
+                className="text-sm text-error hover:text-error/80 transition-colors disabled:opacity-60"
+              >
+                Delete Quote
               </button>
             </div>
           </div>
@@ -909,31 +949,46 @@ export default function ViewQuote() {
           <div className="fixed inset-0 z-50 flex items-center justify-center bg-surface/60 backdrop-blur-sm">
             <div className="bg-surface-container rounded border border-outline-variant shadow-xl p-6 w-full max-w-sm mx-4">
               <h2 className="text-base font-semibold text-on-surface mb-2">
-                {confirmModal === 'approve' ? 'Approve this quote?' : 'Revoke approval?'}
+                {confirmModal === 'approve' ? 'Approve this quote?' : confirmModal === 'revoke' ? 'Revoke approval?' : 'Delete this quote?'}
               </h2>
               <p className="text-sm text-on-surface-variant mb-6">
                 {confirmModal === 'approve'
                   ? 'This marks the quote as approved. You can revoke approval at any time.'
-                  : 'This returns the quote to Ready status.'}
+                  : confirmModal === 'revoke'
+                  ? 'This returns the quote to Ready status.'
+                  : 'This permanently removes the quote and cannot be undone.'}
               </p>
-              {approveError && (
+              {approveError && confirmModal !== 'delete' && (
                 <p className="text-xs text-error mb-4">{approveError}</p>
+              )}
+              {deleteError && confirmModal === 'delete' && (
+                <p className="text-xs text-error mb-4">{deleteError}</p>
               )}
               <div className="flex justify-end gap-2">
                 <button
-                  onClick={() => { setConfirmModal(null); setApproveError(null) }}
-                  disabled={approveLoading}
+                  onClick={() => { setConfirmModal(null); setApproveError(null); setDeleteError(null) }}
+                  disabled={approveLoading || deleteLoading}
                   className="text-sm px-4 py-2 rounded border border-outline-variant text-on-surface-variant hover:bg-surface-container-low transition-colors disabled:opacity-60"
                 >
                   Cancel
                 </button>
-                <button
-                  onClick={confirmModal === 'approve' ? handleApprove : handleRevoke}
-                  disabled={approveLoading}
-                  className="text-sm px-4 py-2 rounded bg-primary text-on-primary hover:bg-primary/90 transition-colors disabled:opacity-60"
-                >
-                  {approveLoading ? 'Working…' : confirmModal === 'approve' ? 'Approve' : 'Revoke'}
-                </button>
+                {confirmModal === 'delete' ? (
+                  <button
+                    onClick={handleDelete}
+                    disabled={deleteLoading}
+                    className="text-sm px-4 py-2 rounded bg-error text-on-error hover:bg-error/90 transition-colors disabled:opacity-60"
+                  >
+                    {deleteLoading ? 'Deleting…' : 'Delete'}
+                  </button>
+                ) : (
+                  <button
+                    onClick={confirmModal === 'approve' ? handleApprove : handleRevoke}
+                    disabled={approveLoading}
+                    className="text-sm px-4 py-2 rounded bg-primary text-on-primary hover:bg-primary/90 transition-colors disabled:opacity-60"
+                  >
+                    {approveLoading ? 'Working…' : confirmModal === 'approve' ? 'Approve' : 'Revoke'}
+                  </button>
+                )}
               </div>
             </div>
           </div>

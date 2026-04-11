@@ -32,6 +32,7 @@ export default function CreateQuote() {
   const [formFields, setFormFields] = useState(buildEditFields({}))
   const [rawInput, setRawInput] = useState('')
   const [submitting, setSubmitting] = useState(false)
+  const [submitPhase, setSubmitPhase] = useState(null) // 'creating' | 'parsing'
   const [error, setError] = useState(null)
   const [searchParams] = useSearchParams()
 
@@ -95,6 +96,7 @@ export default function CreateQuote() {
       return
     }
     setSubmitting(true)
+    setSubmitPhase('creating')
     setError(null)
     try {
       const res = await fetch('/api/quotes', {
@@ -105,10 +107,22 @@ export default function CreateQuote() {
       })
       const data = await res.json()
       if (!res.ok) throw new Error(data.error || 'Failed to create quote')
-      navigate(`/quotes/${data.id}`)
+
+      setSubmitPhase('parsing')
+      const parseRes = await fetch(`/api/quotes/${data.id}/parse`, {
+        method: 'POST',
+        credentials: 'include',
+      })
+      if (!parseRes.ok) {
+        // Parsing failed — still navigate to the quote, just without pre-fill
+        navigate(`/quotes/${data.id}`)
+        return
+      }
+      navigate(`/quotes/${data.id}?edit=true`)
     } catch (err) {
       setError(err.message)
       setSubmitting(false)
+      setSubmitPhase(null)
     }
   }
 
@@ -204,7 +218,7 @@ export default function CreateQuote() {
                 disabled={submitting}
                 className="bg-primary text-on-primary text-sm font-medium px-6 py-2.5 rounded hover:bg-primary-container transition-colors disabled:opacity-60"
               >
-                {submitting ? 'Creating…' : 'Create Quote'}
+                {submitPhase === 'parsing' ? 'Parsing inquiry…' : submitPhase === 'creating' ? 'Creating…' : 'Start Quote'}
               </button>
             </div>
           </form>

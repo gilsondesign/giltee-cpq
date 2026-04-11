@@ -9,6 +9,9 @@ export const YOUTH_SIZES = ['YXS', 'YS', 'YM', 'YL', 'YXL']
 export const TODDLER_SIZES = ['2T', '4T', '6T']
 export const PRODUCT_TYPES = ['adult', 'youth', 'toddler', 'headwear']
 
+// Canonical size sort order for dynamic sizes fetched from SS API
+const SIZE_ORDER = ['2T', '4T', '6T', 'YXS', 'YS', 'YM', 'YL', 'YXL', 'XS', 'S', 'M', 'L', 'XL', '2XL', '3XL', '4XL', '5XL']
+
 // ─── Size helpers ─────────────────────────────────────────────────────────────
 export function parseSizeBreakdown(breakdown) {
   const result = {}
@@ -76,7 +79,7 @@ function productToFields(p, expanded = false) {
       name: l.name || '',
       color_count: l.color_count ?? l.colorCount ?? 1,
       print_size: l.print_size || l.printSize || 'STANDARD',
-      ink_colors: l.ink_colors || l.inkColors || [],
+      ink_colors: (Array.isArray(l.ink_colors) ? l.ink_colors : Array.isArray(l.inkColors) ? l.inkColors : []).map(c => typeof c === 'string' ? { name: c, custom: false } : c),
     })),
     artwork_status: d.artwork_status || 'UNKNOWN',
     special_inks: (d.special_inks || []).join(', '),
@@ -171,42 +174,52 @@ function Check({ id, label, checked, onChange }) {
 // ─── Product card ─────────────────────────────────────────────────────────────
 function ProductCard({ product, index, onChange, onRemove, canRemove, selectedSupplier }) {
   const expanded = product._expanded ?? true
-  const [styleMismatchWarning, setStyleMismatchWarning] = useState(null)
   const [showMiscPrint, setShowMiscPrint] = useState(false)
+  const [dynamicSizes, setDynamicSizes] = useState(null)
+  const [dynamicColors, setDynamicColors] = useState(null)
+  const lastFetchedStyle = React.useRef(null)
 
   useEffect(() => {
-    const { brand_style, product_type, colors } = product
-    setStyleMismatchWarning(null)
-    if (!brand_style || (product_type !== 'youth' && product_type !== 'toddler')) {
+    const style = product.brand_style?.trim()
+    if (!style) {
+      setDynamicSizes(null)
+      setDynamicColors(null)
       return
     }
     const controller = new AbortController()
-    const color = colors ? colors.split(',')[0].trim() : ''
-    fetch(
-      `/api/garments/lookup?style=${encodeURIComponent(brand_style)}&color=${encodeURIComponent(color)}`,
-      { signal: controller.signal }
-    )
-      .then(r => r.ok ? r.json() : null)
-      .then(data => {
-        if (!data || !Array.isArray(data.skus)) {
-          setStyleMismatchWarning(null)
-          return
-        }
-        const youthSizes = ['YXS', 'YS', 'YM', 'YL', 'YXL']
-        const toddlerSizes = ['2T', '4T', '6T']
-        const targetSizes = product_type === 'toddler' ? toddlerSizes : youthSizes
-        const hasMatch = data.skus.some(sku => targetSizes.includes(sku.size))
-        setStyleMismatchWarning(hasMatch ? null :
-          product_type === 'toddler'
-            ? 'Toddler sizes require a toddler garment style. Update the style or change the product type.'
-            : 'Youth sizes require a youth garment style (e.g. 3001YCVC). Update the style or change the product type.'
-        )
-      })
-      .catch(err => {
-        if (err.name !== 'AbortError') setStyleMismatchWarning(null)
-      })
-    return () => controller.abort()
-  }, [product.brand_style, product.product_type, product.colors]) // eslint-disable-line react-hooks/exhaustive-deps
+    const timer = setTimeout(() => {
+      fetch(`/api/garments/lookup?style=${encodeURIComponent(style)}&color=`, { signal: controller.signal })
+        .then(r => r.ok ? r.json() : null)
+        .then(data => {
+          if (!data || !Array.isArray(data.skus) || !data.skus.length) {
+            setDynamicSizes(null)
+            setDynamicColors(null)
+            return
+          }
+          const sizes = [...new Set(data.skus.map(s => s.size))].sort((a, b) => {
+            const ai = SIZE_ORDER.indexOf(a)
+            const bi = SIZE_ORDER.indexOf(b)
+            if (ai === -1 && bi === -1) return 0
+            if (ai === -1) return 1
+            if (bi === -1) return -1
+            return ai - bi
+          })
+          const colors = [...new Set(data.skus.map(s => s.color))].filter(Boolean).sort()
+          const styleChanged = lastFetchedStyle.current !== null
+          lastFetchedStyle.current = style
+          setDynamicSizes(sizes)
+          setDynamicColors(colors)
+          if (styleChanged) onChange({ ...product, sizes: {}, colors: '' })
+        })
+        .catch(() => {
+          if (!controller.signal.aborted) {
+            setDynamicSizes(null)
+            setDynamicColors(null)
+          }
+        })
+    }, 500)
+    return () => { clearTimeout(timer); controller.abort() }
+  }, [product.brand_style]) // eslint-disable-line react-hooks/exhaustive-deps
 
   function set(key, val) {
     onChange({ ...product, [key]: val })
@@ -215,9 +228,11 @@ function ProductCard({ product, index, onChange, onRemove, canRemove, selectedSu
     onChange({ ...product, _expanded: !expanded })
   }
 
-  const currentSizes = product.product_type === 'youth' ? YOUTH_SIZES
+  const currentSizes = dynamicSizes || (
+    product.product_type === 'youth' ? YOUTH_SIZES
     : product.product_type === 'toddler' ? TODDLER_SIZES
     : ADULT_SIZES
+  )
 
   const summary = [
     product.brand_style,
@@ -262,12 +277,22 @@ function ProductCard({ product, index, onChange, onRemove, canRemove, selectedSu
             <div className="grid grid-cols-2 gap-3">
               <Field label="Garment style" value={product.brand_style} onChange={v => set('brand_style', v)} placeholder="e.g. 3001CVC, Gildan 5000" />
               <Field label="Quantity" type="number" value={product.quantity} onChange={v => set('quantity', v)} placeholder="e.g. 60" />
-              <Field label="Colors" value={product.colors} onChange={v => set('colors', v)} placeholder="Navy, White (comma-separated)" className="col-span-2" />
+              {dynamicColors ? (
+                <div className="flex flex-col gap-1 border-b border-outline-variant/20 pb-2 col-span-2">
+                  <span className="text-xs text-on-surface-variant">Color</span>
+                  <select
+                    value={product.colors || ''}
+                    onChange={e => set('colors', e.target.value)}
+                    className="text-sm bg-surface border border-outline-variant rounded px-3 py-1.5 text-on-surface focus:outline-none focus:ring-1 focus:ring-primary"
+                  >
+                    <option value="">— Select a color —</option>
+                    {dynamicColors.map(c => <option key={c} value={c}>{c}</option>)}
+                  </select>
+                </div>
+              ) : (
+                <Field label="Colors" value={product.colors} onChange={v => set('colors', v)} placeholder="Navy, White (comma-separated)" className="col-span-2" />
+              )}
             </div>
-            {styleMismatchWarning && (
-              <p role="alert" className="text-sm text-red-600 mt-1">{styleMismatchWarning}</p>
-            )}
-
             {/* Product type selector */}
             <div className="flex gap-3 py-2 items-center border-b border-outline-variant/20 mt-3">
               <label htmlFor={`type-${index}`} className="text-xs text-on-surface-variant w-28 shrink-0">Product Type</label>
