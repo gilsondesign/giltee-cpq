@@ -8,7 +8,7 @@ describe('StatusBadge', () => {
   })
 
   it('renders all statuses without crashing', () => {
-    const statuses = ['draft', 'processing', 'ready', 'error', 'sent']
+    const statuses = ['draft', 'processing', 'ready', 'error', 'sent', 'approved']
     statuses.forEach(status => {
       const { unmount } = render(<StatusBadge status={status} />)
       expect(screen.getByText(status)).toBeInTheDocument()
@@ -19,5 +19,10 @@ describe('StatusBadge', () => {
   it('handles unknown status gracefully', () => {
     render(<StatusBadge status="unknown" />)
     expect(screen.getByText('unknown')).toBeInTheDocument()
+  })
+
+  it('renders the approved status text', () => {
+    render(<StatusBadge status="approved" />)
+    expect(screen.getByText('approved')).toBeInTheDocument()
   })
 })
