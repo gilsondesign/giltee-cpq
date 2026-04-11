@@ -213,11 +213,11 @@ export default function ViewQuote() {
       const data = await res.json()
       if (!res.ok) throw new Error(data.error || 'Approval failed')
       setQuote(data)
+      setConfirmModal(null)
     } catch (err) {
       setApproveError(err.message)
     } finally {
       setApproveLoading(false)
-      setConfirmModal(null)
     }
   }
 
@@ -232,11 +232,11 @@ export default function ViewQuote() {
       const data = await res.json()
       if (!res.ok) throw new Error(data.error || 'Revocation failed')
       setQuote(data)
+      setConfirmModal(null)
     } catch (err) {
       setApproveError(err.message)
     } finally {
       setApproveLoading(false)
-      setConfirmModal(null)
     }
   }
 
