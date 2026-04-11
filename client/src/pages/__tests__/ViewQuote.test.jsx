@@ -102,6 +102,13 @@ const MOCK_QUOTE_MULTI = {
   activity_log: [],
 }
 
+const MOCK_QUOTE_APPROVED = {
+  ...MOCK_QUOTE_READY,
+  status: 'approved',
+  approved_at: '2026-04-10T14:00:00Z',
+  approved_by: 'adam@giltee.com',
+}
+
 function renderViewQuote(quote = MOCK_QUOTE_DRAFT) {
   global.fetch = vi.fn().mockResolvedValue({
     ok: true,
@@ -303,5 +310,103 @@ describe('profit editor', () => {
       expect(body.profit_mode).toBe('percent')
     })
     vi.restoreAllMocks()
+  })
+})
+
+describe('ViewQuote — approval buttons', () => {
+  it('shows Approve Quote button when status is ready', async () => {
+    renderViewQuote(MOCK_QUOTE_READY)
+    await waitFor(() =>
+      expect(screen.getByRole('button', { name: /approve quote/i })).toBeInTheDocument()
+    )
+  })
+
+  it('does not show Approve Quote button when status is draft', async () => {
+    renderViewQuote(MOCK_QUOTE_DRAFT)
+    await waitFor(() => screen.getByRole('button', { name: /run quote/i }))
+    expect(screen.queryByRole('button', { name: /approve quote/i })).not.toBeInTheDocument()
+  })
+
+  it('shows Revoke Approval button when status is approved', async () => {
+    renderViewQuote(MOCK_QUOTE_APPROVED)
+    await waitFor(() =>
+      expect(screen.getByRole('button', { name: /revoke approval/i })).toBeInTheDocument()
+    )
+  })
+
+  it('does not show Approve Quote button when status is approved', async () => {
+    renderViewQuote(MOCK_QUOTE_APPROVED)
+    await waitFor(() => screen.getByRole('button', { name: /revoke approval/i }))
+    expect(screen.queryByRole('button', { name: /approve quote/i })).not.toBeInTheDocument()
+  })
+
+  it('clicking Approve Quote opens the confirm modal', async () => {
+    const user = userEvent.setup()
+    renderViewQuote(MOCK_QUOTE_READY)
+    await waitFor(() => screen.getByRole('button', { name: /approve quote/i }))
+    await user.click(screen.getByRole('button', { name: /approve quote/i }))
+    expect(screen.getByText('Approve this quote?')).toBeInTheDocument()
+  })
+
+  it('clicking Revoke Approval opens the confirm modal', async () => {
+    const user = userEvent.setup()
+    renderViewQuote(MOCK_QUOTE_APPROVED)
+    await waitFor(() => screen.getByRole('button', { name: /revoke approval/i }))
+    await user.click(screen.getByRole('button', { name: /revoke approval/i }))
+    expect(screen.getByText('Revoke approval?')).toBeInTheDocument()
+  })
+
+  it('confirming Approve calls POST /approve', async () => {
+    const user = userEvent.setup()
+    const approvedQuote = { ...MOCK_QUOTE_READY, status: 'approved', approved_at: '2026-04-10T14:00:00Z', approved_by: 'adam@giltee.com' }
+    global.fetch = vi.fn()
+      .mockResolvedValueOnce({ ok: true, json: async () => MOCK_QUOTE_READY })  // initial GET
+      .mockResolvedValueOnce({ ok: true, json: async () => approvedQuote })      // POST /approve
+    render(
+      <AuthContext.Provider value={{ user: mockUser, setUser: vi.fn() }}>
+        <MemoryRouter initialEntries={['/quotes/GL-00001']}>
+          <Routes>
+            <Route path="/quotes/:id" element={<ViewQuote />} />
+          </Routes>
+        </MemoryRouter>
+      </AuthContext.Provider>
+    )
+    await waitFor(() => screen.getByRole('button', { name: /approve quote/i }))
+    await user.click(screen.getByRole('button', { name: /approve quote/i }))
+    await user.click(screen.getByRole('button', { name: /^approve$/i }))
+    await waitFor(() => {
+      const calls = global.fetch.mock.calls
+      const approveCall = calls.find(([url]) => url.includes('/approve'))
+      expect(approveCall).toBeDefined()
+      expect(approveCall[1].method).toBe('POST')
+    })
+  })
+
+  it('edit on an approved quote sends approved_at: null and approved_by: null', async () => {
+    const user = userEvent.setup()
+    global.fetch = vi.fn()
+      .mockResolvedValueOnce({ ok: true, json: async () => MOCK_QUOTE_APPROVED })                    // initial GET
+      .mockResolvedValueOnce({ ok: true, json: async () => ({ ...MOCK_QUOTE_APPROVED, status: 'draft' }) }) // PATCH save
+    render(
+      <AuthContext.Provider value={{ user: mockUser, setUser: vi.fn() }}>
+        <MemoryRouter initialEntries={['/quotes/GL-00001']}>
+          <Routes>
+            <Route path="/quotes/:id" element={<ViewQuote />} />
+          </Routes>
+        </MemoryRouter>
+      </AuthContext.Provider>
+    )
+    await waitFor(() => screen.getByRole('button', { name: /edit/i }))
+    await user.click(screen.getByRole('button', { name: /edit/i }))
+    await user.click(screen.getByRole('button', { name: /save changes/i }))
+    await waitFor(() => {
+      const calls = global.fetch.mock.calls
+      const patchCall = calls.find(([, opts]) => opts?.method === 'PATCH')
+      expect(patchCall).toBeDefined()
+      const body = JSON.parse(patchCall[1].body)
+      expect(body.status).toBe('draft')
+      expect(body.approved_at).toBeNull()
+      expect(body.approved_by).toBeNull()
+    })
   })
 })

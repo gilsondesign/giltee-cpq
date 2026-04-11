@@ -45,6 +45,9 @@ export default function ViewQuote() {
   const [profitMode, setProfitMode] = useState('per_shirt')
   const [profitValue, setProfitValue] = useState('0')
   const [qaChecking, setQaChecking] = useState(false)
+  const [confirmModal, setConfirmModal] = useState(null) // 'approve' | 'revoke' | null
+  const [approveLoading, setApproveLoading] = useState(false)
+  const [approveError, setApproveError] = useState(null)
 
   function saveProfitSettings(mode, value) {
     fetch(`/api/quotes/${id}`, {
@@ -147,7 +150,11 @@ export default function ViewQuote() {
         project_name: f.project_name || null,
         selected_supplier: hasScreenPrint ? (f.selected_supplier || null) : null,
       }
-      if (['ready', 'error'].includes(quote.status)) updates.status = 'draft'
+      if (['ready', 'error', 'approved'].includes(quote.status)) {
+        updates.status = 'draft'
+        updates.approved_at = null
+        updates.approved_by = null
+      }
 
       const res = await fetch(`/api/quotes/${id}`, {
         method: 'PATCH',
@@ -192,6 +199,44 @@ export default function ViewQuote() {
       setRunError(err.message)
     } finally {
       setRunning(false)
+    }
+  }
+
+  async function handleApprove() {
+    setApproveLoading(true)
+    setApproveError(null)
+    try {
+      const res = await fetch(`/api/quotes/${id}/approve`, {
+        method: 'POST',
+        credentials: 'include',
+      })
+      const data = await res.json()
+      if (!res.ok) throw new Error(data.error || 'Approval failed')
+      setQuote(data)
+    } catch (err) {
+      setApproveError(err.message)
+    } finally {
+      setApproveLoading(false)
+      setConfirmModal(null)
+    }
+  }
+
+  async function handleRevoke() {
+    setApproveLoading(true)
+    setApproveError(null)
+    try {
+      const res = await fetch(`/api/quotes/${id}/revoke`, {
+        method: 'POST',
+        credentials: 'include',
+      })
+      const data = await res.json()
+      if (!res.ok) throw new Error(data.error || 'Revocation failed')
+      setQuote(data)
+    } catch (err) {
+      setApproveError(err.message)
+    } finally {
+      setApproveLoading(false)
+      setConfirmModal(null)
     }
   }
 
@@ -291,6 +336,23 @@ export default function ViewQuote() {
           <div className="flex flex-col items-end gap-2">
             {!editing && (
               <div className="flex items-center gap-2">
+                {/* Approve Quote / Revoke Approval */}
+                {quote.status === 'ready' && (
+                  <button
+                    onClick={() => setConfirmModal('approve')}
+                    className="flex items-center gap-1.5 text-xs font-medium px-3 py-2 rounded bg-primary text-on-primary hover:bg-primary/90 transition-colors"
+                  >
+                    Approve Quote
+                  </button>
+                )}
+                {quote.status === 'approved' && (
+                  <button
+                    onClick={() => setConfirmModal('revoke')}
+                    className="flex items-center gap-1.5 text-xs font-medium px-3 py-2 rounded border border-outline-variant text-on-surface-variant hover:bg-surface-container-low transition-colors"
+                  >
+                    Revoke Approval
+                  </button>
+                )}
                 {/* Quote Quality — always available */}
                 {(() => {
                   const issueCount = qaFailed.length
@@ -320,7 +382,7 @@ export default function ViewQuote() {
                     { key: 'email', label: 'Email Draft' },
                     { key: 'pdf', label: 'Quote PDF' },
                   ].map(({ key, label }) => {
-                    const isReady = quote.status === 'ready'
+                    const isReady = ['ready', 'approved'].includes(quote.status)
                     return (
                       <button
                         key={key}
@@ -374,7 +436,7 @@ export default function ViewQuote() {
           <div className="bg-surface-container-low rounded border border-outline-variant/40 mb-6 overflow-hidden">
             <div className="flex items-center justify-between px-5 py-3 border-b border-outline-variant/20 bg-surface-container">
               <p className="text-xs font-bold tracking-widest text-on-surface-variant uppercase">Edit Quote</p>
-              {['ready', 'error'].includes(quote.status) && (
+              {['ready', 'error', 'approved'].includes(quote.status) && (
                 <span className="text-xs text-on-surface-variant">Saving resets to draft — re-run pipeline after</span>
               )}
             </div>
@@ -841,6 +903,41 @@ export default function ViewQuote() {
         </div>
 
       </div>
+
+        {/* ── Confirm Modal ───────────────────────────────────────────── */}
+        {confirmModal && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-surface/60 backdrop-blur-sm">
+            <div className="bg-surface-container rounded-xl border border-outline-variant shadow-xl p-6 w-full max-w-sm mx-4">
+              <h2 className="text-base font-semibold text-on-surface mb-2">
+                {confirmModal === 'approve' ? 'Approve this quote?' : 'Revoke approval?'}
+              </h2>
+              <p className="text-sm text-on-surface-variant mb-6">
+                {confirmModal === 'approve'
+                  ? 'This marks the quote as approved. You can revoke approval at any time.'
+                  : 'This returns the quote to Ready status.'}
+              </p>
+              {approveError && (
+                <p className="text-xs text-error mb-4">{approveError}</p>
+              )}
+              <div className="flex justify-end gap-2">
+                <button
+                  onClick={() => { setConfirmModal(null); setApproveError(null) }}
+                  disabled={approveLoading}
+                  className="text-sm px-4 py-2 rounded border border-outline-variant text-on-surface-variant hover:bg-surface-container-low transition-colors disabled:opacity-60"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={confirmModal === 'approve' ? handleApprove : handleRevoke}
+                  disabled={approveLoading}
+                  className="text-sm px-4 py-2 rounded bg-primary text-on-primary hover:bg-primary/90 transition-colors disabled:opacity-60"
+                >
+                  {approveLoading ? 'Working…' : confirmModal === 'approve' ? 'Approve' : 'Revoke'}
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
     </div>
   )
 }
