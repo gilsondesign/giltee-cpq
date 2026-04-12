@@ -538,24 +538,44 @@ export default function ViewQuote() {
                       </div>
                     )}
                     <InfoRow label="Decoration" value={dec.method} />
-                    <InfoRow
-                      label="Locations"
-                      value={(dec.locations || []).map((l, i) => {
-                        const inkNames = (l.ink_colors || l.inkColors || [])
-                        const stockNames = inkNames.filter(c => !c.custom).map(c => c.name)
-                        const customNames = inkNames.filter(c => c.custom).map(c => c.name)
-                        const colorStr = [
-                          ...stockNames,
-                          ...customNames.map(n => `${n} (custom)`),
-                        ].join(', ')
-                        return (
-                          <span key={i}>
-                            {i > 0 && <span className="text-on-surface-variant">, </span>}
-                            {l.name} ({l.color_count || l.colorCount || '?'}c{colorStr ? `: ${colorStr}` : ''})
-                          </span>
-                        )
-                      })}
-                    />
+                    {(dec.locations || []).length > 0 && (
+                      <div className="flex gap-4 py-2 border-b border-outline-variant/20">
+                        <span className="text-xs text-on-surface-variant w-40 shrink-0">Locations</span>
+                        <div className="flex flex-col gap-3 flex-1">
+                          {(dec.locations || []).map((l, i) => {
+                            const inkNames = (l.ink_colors || l.inkColors || [])
+                            const stockColors = inkNames.filter(c => !c.custom).map(c => c.name)
+                            const customColors = inkNames.filter(c => c.custom).map(c => c.name)
+                            const colorCount = l.color_count ?? l.colorCount ?? inkNames.length
+                            return (
+                              <div key={i} className={i > 0 ? 'pt-3 border-t border-outline-variant/20' : ''}>
+                                <p className="text-sm font-medium text-on-surface mb-1">{l.name}</p>
+                                <div className="flex flex-wrap gap-x-6 gap-y-0.5">
+                                  <span className="text-xs text-on-surface-variant">
+                                    <span className="text-on-surface font-medium">{colorCount}</span> ink color{colorCount !== 1 ? 's' : ''}
+                                  </span>
+                                  {l.print_size && l.print_size !== 'STANDARD' && (
+                                    <span className="text-xs text-on-surface-variant">
+                                      Size: <span className="text-on-surface font-medium">{l.print_size}</span>
+                                    </span>
+                                  )}
+                                </div>
+                                {(stockColors.length > 0 || customColors.length > 0) && (
+                                  <div className="flex flex-wrap gap-1.5 mt-1.5">
+                                    {stockColors.map((name, ci) => (
+                                      <span key={ci} className="text-xs px-2 py-0.5 rounded bg-surface-container-highest text-on-surface">{name}</span>
+                                    ))}
+                                    {customColors.map((name, ci) => (
+                                      <span key={ci} className="text-xs px-2 py-0.5 rounded border border-outline-variant text-on-surface-variant">{name} <span className="text-on-surface-variant/60">custom</span></span>
+                                    ))}
+                                  </div>
+                                )}
+                              </div>
+                            )
+                          })}
+                        </div>
+                      </div>
+                    )}
                     {ec.dark_garment && <InfoRow label="Dark garment" value="Yes" />}
                     {ec.individual_names && <InfoRow label="Individual names" value="Yes" />}
                     {ec.extended_sizes && <InfoRow label="Extended sizes" value="Yes (2XL+)" />}

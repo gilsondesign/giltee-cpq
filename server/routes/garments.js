@@ -7,8 +7,8 @@ const router = express.Router()
 router.get('/lookup', async (req, res, next) => {
   try {
     const { style, color } = req.query
-    if (!style || !color) {
-      return res.status(400).json({ error: 'style and color query params are required' })
+    if (!style) {
+      return res.status(400).json({ error: 'style query param is required' })
     }
     const result = await ssService.lookupGarment({ style, color })
     res.json(result)

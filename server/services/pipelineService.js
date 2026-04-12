@@ -3,7 +3,6 @@ const claudeService = require('./claudeService')
 const ssService = require('./ssService')
 const pricingService = require('./pricingService')
 const pdfService = require('./pdfService')
-const gmailService = require('./gmailService')
 const driveService = require('./driveService')
 const skills = require('../skills/index')
 
@@ -336,29 +335,6 @@ SUBJECT: [subject line]
       }
     } else {
       await appendLog(quoteId, 'Drive upload skipped — credentials not configured')
-    }
-
-    // ── Step 8: Gmail draft ──────────────────────────────────────────────────
-    const gmailConfigured = driveConfigured && process.env.GMAIL_REFRESH_TOKEN && !process.env.GMAIL_REFRESH_TOKEN.startsWith('your_')
-    const recipientEmail = intake_record.customer?.email || quote.customer_email
-    if (!gmailConfigured) {
-      await appendLog(quoteId, 'Gmail draft skipped — credentials not configured')
-    } else if (!recipientEmail) {
-      await appendLog(quoteId, 'Gmail draft skipped — no recipient email')
-    } else {
-      try {
-        const draftId = await gmailService.createDraft({
-          to: recipientEmail,
-          subject: emailSubject,
-          body: emailBody,
-          pdfBuffer,
-          pdfFilename,
-        })
-        await queries.updateQuote(quoteId, { gmail_draft_id: draftId })
-        await appendLog(quoteId, 'Gmail draft created', { draftId })
-      } catch (err) {
-        await appendLog(quoteId, 'Gmail draft skipped', { warning: err.message })
-      }
     }
 
     // ── Complete ─────────────────────────────────────────────────────────────
