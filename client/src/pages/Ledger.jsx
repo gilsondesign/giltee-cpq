@@ -69,7 +69,7 @@ export default function Ledger() {
         {!loading && !error && quotes.length === 0 && (
           <div className="text-center py-16">
             <p className="text-on-surface-variant text-sm mb-4">
-              {activeStatus === 'all' ? 'No quotes yet.' : `No ${activeStatus} quotes.`}
+              No quotes yet.
             </p>
             <Link
               to="/quotes/new"
