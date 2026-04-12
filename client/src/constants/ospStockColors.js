@@ -2,6 +2,8 @@
 // Extracted from osp-stock-colors.ase — OSP's official stock Pantone palette.
 // Hex values are screen approximations for UI display only.
 export const OSP_STOCK_COLORS = [
+  { name: 'White',                  hex: '#FFFFFF' },
+  { name: 'Black',                  hex: '#2C2A29' },
   { name: 'PANTONE Warm Red C',     hex: '#F9423A' },
   { name: 'PANTONE 485 C',          hex: '#CD212A' },
   { name: 'PANTONE 185 C',          hex: '#E4002B' },

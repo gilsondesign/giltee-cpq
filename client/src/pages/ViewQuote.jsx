@@ -689,6 +689,10 @@ export default function ViewQuote() {
                   ? `Product ${i + 1}${prod?.brand_style ? ` — ${prod.brand_style}` : ''}`
                   : (prod?.brand_style || 'Product')
 
+                const customPmsCount = (prod?.decoration?.locations || []).reduce((sum, loc) =>
+                  sum + (loc.ink_colors || loc.inkColors || []).filter(c => c.custom).length, 0)
+                const customPmsFee = pricing.setupFees?.customPmsInk || 0
+
                 return (
                   <div key={i} className={i > 0 ? 'border-t border-outline-variant/20 pt-4' : ''}>
                     {products.length > 1 && (
@@ -715,6 +719,14 @@ export default function ViewQuote() {
                         <span className="text-on-surface-variant">Product Total <span className="text-xs">({qty} units)</span></span>
                         <span className="text-on-surface font-medium">{formatCurrency(productTotal)}</span>
                       </div>
+                      {customPmsFee > 0 && (
+                        <div className="flex justify-between border-t border-outline-variant/20 pt-1 mt-1">
+                          <span className="text-on-surface-variant">
+                            Additional Services — Custom PMS Ink Colors ({customPmsCount}) — {activeSupplier === 'REDWALL' ? 'Redwall' : 'OSP'}
+                          </span>
+                          <span className="text-on-surface font-medium">{formatCurrency(customPmsFee)}</span>
+                        </div>
+                      )}
                     </div>
                   </div>
                 )

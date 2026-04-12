@@ -136,31 +136,37 @@ function cell(text, opts = {}) {
 // ─── Pricing row builders ─────────────────────────────────────────────────────
 
 // Returns array of 4-cell row arrays for a single pricing block
-function buildPricingRows(pricing, qty, garmentStyle, method, profitPerUnit = 0, extendedSizeRows = []) {
+function buildPricingRows(pricing, qty, garmentStyle, method, profitPerUnit = 0, extendedSizeRows = [], customPmsCount = 0, supplier = '') {
   if (!pricing) return []
   const rows = []
 
   // Combined per-unit line (garment + decoration + profit — not broken down for customer)
   const unitPrice = (pricing.perUnitGarment || 0) + (pricing.perUnitDecoration || 0) + profitPerUnit
-  rows.push([
-    cell(garmentStyle || 'Per Unit'),
-    cell(qty, { alignment: 'center' }),
-    cell(fmt(unitPrice), { alignment: 'right' }),
-    cell(fmt(round2(unitPrice * qty)), { alignment: 'right' }),
-  ])
-
-  // Extended size upcharge rows
-  for (const { size, qty: eQty, upcharge } of extendedSizeRows) {
+  const extendedQtyTotal = extendedSizeRows.reduce((s, r) => s + r.qty, 0)
+  const standardQty = qty - extendedQtyTotal
+  if (standardQty > 0) {
     rows.push([
-      cell(`${size} upcharge`),
+      cell(garmentStyle || 'Per Unit'),
+      cell(standardQty, { alignment: 'center' }),
+      cell(fmt(unitPrice), { alignment: 'right' }),
+      cell(fmt(round2(unitPrice * standardQty)), { alignment: 'right' }),
+    ])
+  }
+
+  // Extended size rows — show full unit price (base + upcharge), not just the delta
+  for (const { size, qty: eQty, upcharge } of extendedSizeRows) {
+    const fullUnitPrice = round2(unitPrice + upcharge)
+    rows.push([
+      cell(size),
       cell(eQty, { alignment: 'center' }),
-      cell(fmt(upcharge), { alignment: 'right' }),
-      cell(fmt(round2(upcharge * eQty)), { alignment: 'right' }),
+      cell(fmt(fullUnitPrice), { alignment: 'right' }),
+      cell(fmt(round2(fullUnitPrice * eQty)), { alignment: 'right' }),
     ])
   }
 
   // One-time fees
   const fees = pricing.setupFees || {}
+  const pmsLabel = `Custom PMS Ink Colors${customPmsCount > 0 ? ` (${customPmsCount})` : ''}${supplier ? ` — ${supplier}` : ''}`
   const feeLines = [
     [fees.screenSetup, 'Screen setup fee'],
     [fees.dtfSetup, 'DTF setup fee'],
@@ -169,6 +175,7 @@ function buildPricingRows(pricing, qty, garmentStyle, method, profitPerUnit = 0,
     [fees.rushFee, 'Rush order fee'],
     [fees.artFee, 'Artwork fee'],
     [fees.inkChange, 'Ink change fee'],
+    [fees.customPmsInk, pmsLabel],
   ]
   for (const [amount, label] of feeLines) {
     if (amount && Number(amount) > 0) {
@@ -185,8 +192,8 @@ function buildPricingRows(pricing, qty, garmentStyle, method, profitPerUnit = 0,
 }
 
 // Single-supplier 4-col pricing table
-function singlePricingTable(pricing, qty, garmentStyle, method, profitPerUnit = 0, extendedSizeRows = []) {
-  const dataRows = buildPricingRows(pricing, qty, garmentStyle, method, profitPerUnit, extendedSizeRows)
+function singlePricingTable(pricing, qty, garmentStyle, method, profitPerUnit = 0, extendedSizeRows = [], customPmsCount = 0, supplier = '') {
+  const dataRows = buildPricingRows(pricing, qty, garmentStyle, method, profitPerUnit, extendedSizeRows, customPmsCount, supplier)
   // Compute adjusted order total using user-set profit (not pipeline orderTotal)
   const setupTotal = Object.values(pricing?.setupFees || {}).reduce((s, v) => s + (Number(v) || 0), 0)
   const extendedTotal = extendedSizeRows.reduce((s, { qty: eQty, upcharge }) => s + round2(upcharge * eQty), 0)
@@ -458,9 +465,12 @@ function buildDocDefinition(quote, supplier) {
       }
     }
 
+    const customPmsCount = locs_i.reduce((sum, loc) =>
+      sum + (loc.inkColors || loc.ink_colors || []).filter(c => c.custom).length, 0)
+
     const pricing = [
       secLabel('Pricing'),
-      singlePricingTable(active_i, qty_i, gStyle, method_i, getProfitPerUnit(active_i), extendedSizeRows),
+      singlePricingTable(active_i, qty_i, gStyle, method_i, getProfitPerUnit(active_i), extendedSizeRows, customPmsCount, resolvedSupplier),
       ...(active_i?.flags?.length
         ? active_i.flags.map(f => ({ text: `* ${f}`, fontSize: 7.5, color: MID_GRAY, italics: true, margin: [0, 3, 0, 0] }))
         : []),
